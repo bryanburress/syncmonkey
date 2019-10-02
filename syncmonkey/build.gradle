@@ -7,7 +7,7 @@ android {
         minSdkVersion 24
         targetSdkVersion 29
         versionCode 1
-        versionName "1.0"
+        versionName "0.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -16,10 +16,58 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    sourceSets {
+        main {
+            //jniLibs.srcDirs = ["lib/x86"]
+            jniLibs.srcDirs = ["lib"]
+        }
+        /*x86 {
+            jniLibs.srcDirs = ["lib/x86"]
+        }
+        x86_64 {
+            jniLibs.srcDirs = ["lib"]
+        }
+        armv7a {
+            jniLibs.srcDirs = ["lib/armv7a"]
+        }
+        armv8a {
+            jniLibs.srcDirs = ["lib"]
+        }
+        fatapk {
+            jniLibs.srcDirs = ["lib/fatapk"]
+        }*/
+    }
+    //flavorDimensions 'arch'
+    /*productFlavors {
+        x86 {
+            dimension 'arch'
+            versionNameSuffix "-x86"
+        }
+        armv7a {
+            dimension 'arch'
+            versionNameSuffix "-armv7a"
+        }
+        armv8a {
+            dimension 'arch'
+            versionNameSuffix "-armv8a"
+        }
+        x86_64 {
+            dimension 'arch'
+            versionNameSuffix "-x86_64"
+        }
+        fatapk {
+            dimension 'arch'
+            versionNameSuffix "-fatapk"
+        }
+    }*/
+    compileOptions {
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
+    }
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     testImplementation 'junit:junit:4.12'

@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Sync Monkey</string>
+
+    <string name="pref_key_logs">pref_key_logs</string>
+    <string name="hash_error">ERROR</string>
+    <string name="hash_unsupported">UNSUPPORTED</string>
+    <string name="hash_copied_confirmation">Hash copied to clipboard</string>
+
+    <string name="sync_button_description">All files will be automatically synced at a scheduled interval.
+        Use the Sync Button below to force a sync.</string>
+    <string name="sync_button_text">Sync Now</string>
 </resources>
