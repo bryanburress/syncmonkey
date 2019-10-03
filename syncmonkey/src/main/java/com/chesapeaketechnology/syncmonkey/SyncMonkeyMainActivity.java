@@ -58,7 +58,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         dummyAccount = CreateSyncAccount(this);
 
         ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE},
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_PHONE_STATE},
                 ACCESS_PERMISSION_REQUEST_ID);
     }
 
@@ -73,13 +74,9 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             {
                 if (Manifest.permission.READ_PHONE_STATE.equals(permissions[index]))
                 {
-                    if (grantResults[index] == PackageManager.PERMISSION_GRANTED)
-                    {
-                        initializeDeviceId();
-                    } else
-                    {
-                        Log.w(LOG_TAG, "The READ_PHONE_STATE Permission was denied.");
-                    }
+                    initializeDeviceId();
+
+                    if (grantResults[index] == PackageManager.PERMISSION_DENIED) Log.w(LOG_TAG, "The READ_PHONE_STATE Permission was denied.");
                 } else if (Manifest.permission.READ_EXTERNAL_STORAGE.equals(permissions[index]))
                 {
                     if (grantResults[index] == PackageManager.PERMISSION_GRANTED)
@@ -249,7 +246,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     @SuppressLint("HardwareIds")
     private String getDeviceId()
     {
-        String deviceId;
+        String deviceId = null;
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
                 && getSystemService(Context.TELEPHONY_SERVICE) != null
                 && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) // As of Android API level 29 the IMEI permission is restricted to system apps only.
@@ -262,7 +259,10 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             {
                 deviceId = telephonyManager.getDeviceId();
             }
-        } else
+        }
+
+        // Fall back on the ANDROID_ID
+        if (deviceId == null)
         {
             Log.w(LOG_TAG, "Could not get the device IMEI");
             //Toast.makeText(getApplicationContext(), "Could not get the device IMEI", Toast.LENGTH_SHORT).show();

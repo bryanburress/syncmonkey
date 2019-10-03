@@ -87,6 +87,9 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                 .build();
     }
 
+    /**
+     * Pull the upload preferences from the PreferenceManager, and then upload any files that are not already present on the remote server.
+     */
     private void uploadFile()
     {
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
