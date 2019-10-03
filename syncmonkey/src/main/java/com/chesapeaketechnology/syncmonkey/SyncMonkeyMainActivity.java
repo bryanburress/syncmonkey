@@ -7,7 +7,6 @@ import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.SyncRequest;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,13 +14,14 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
+
+import com.chesapeaketechnology.syncmonkey.fileupload.FileUploadSyncAdapter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -36,7 +36,6 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     private static final String LOG_TAG = SyncMonkeyMainActivity.class.getSimpleName();
 
     private static final int ACCESS_PERMISSION_REQUEST_ID = 1;
-    private static final int SECONDS_IN_HOUR = 3600;
 
     private Account dummyAccount;
 
@@ -45,24 +44,22 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
 
+        Log.i(LOG_TAG, "Starting the SyncMonkey App");
+
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
-        final boolean headless = getIntent().getBooleanExtra(SyncMonkeyConstants.START_HEADLESS_FLAG, false);
-        if (!headless) setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main);
+        findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
 
         copyRcloneConfigFileIfNecessary();
         readSyncMonkeyPropertiesFromFile();
 
-        ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE},
-                ACCESS_PERMISSION_REQUEST_ID);
-
         // Create the dummy account
         dummyAccount = CreateSyncAccount(this);
 
-        final View button = findViewById(R.id.button);
-
-        button.setOnClickListener(listener -> runSyncAdapter());
+        ActivityCompat.requestPermissions(this, new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE},
+                ACCESS_PERMISSION_REQUEST_ID);
     }
 
     @Override
@@ -114,26 +111,15 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      */
     private void initializeSyncAdapter()
     {
+        Log.i(LOG_TAG, "Initializing the Sync Monkey Sync Adapter");
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
         {
             Log.e(LOG_TAG, "Can't initialize the sync adapter schedule because we don't have access to read external storage");
             return;
         }
 
-        // Schedule a periodic sync every 2 hours at any point in time during those 2 hours.
-        /*final SyncRequest.Builder rcloneSyncRequestBuilder = new SyncRequest.Builder();
-        final SyncRequest uploadSyncRequest = rcloneSyncRequestBuilder
-                .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)
-                .syncPeriodic(2 * SECONDS_IN_HOUR, 2 * SECONDS_IN_HOUR)
-                .setExtras(new Bundle()) // I think there is a bug in Android that makes setting this empty Bundle a requirement
-                .build();
-        ContentResolver.requestSync(uploadSyncRequest);*/
-
-        ContentResolver.requestSync(new SyncRequest.Builder()
-                .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)
-                .syncPeriodic(2 * SECONDS_IN_HOUR, 2 * SECONDS_IN_HOUR)
-                .setExtras(new Bundle()) // I think there is a bug in Android that makes setting this empty Bundle a requirement
-                .build());
+        ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
     }
 
     /**
@@ -259,6 +245,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      *
      * @return The IMEI if it can be found, otherwise the Android ID.
      */
+    @SuppressWarnings("ConstantConditions")
     @SuppressLint("HardwareIds")
     private String getDeviceId()
     {

@@ -39,7 +39,7 @@ public class FileItem implements Parcelable
         this.isDir = isDir;
     }
 
-    protected FileItem(Parcel in)
+    private FileItem(Parcel in)
     {
         remote = in.readParcelable(RemoteItem.class.getClassLoader());
         path = in.readString();

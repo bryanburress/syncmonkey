@@ -3,17 +3,17 @@ package com.chesapeaketechnology.syncmonkey.fileupload;
 import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.SyncRequest;
 import android.content.SyncResult;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
-import com.chesapeaketechnology.syncmonkey.Log2File;
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyConstants;
+import com.chesapeaketechnology.syncmonkey.SyncMonkeyMainActivity;
 import com.chesapeaketechnology.syncmonkey.fileupload.Items.RemoteItem;
 
 import java.io.BufferedReader;
@@ -28,11 +28,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 {
     private static final String LOG_TAG = FileUploadSyncAdapter.class.getSimpleName();
 
-    // Global variables
-    // Define a variable to contain a content resolver instance
-    private final ContentResolver contentResolver;
     private final Rclone rclone;
-    private final Log2File log2File;
     private final String dataDirectoryPath;
 
     /**
@@ -51,14 +47,8 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     private FileUploadSyncAdapter(Context context, boolean autoInitialize, boolean allowParallelSyncs)
     {
         super(context, autoInitialize, allowParallelSyncs);
-        /*
-         * If your app uses a content resolver, get an instance of it
-         * from the incoming Context
-         */
-        contentResolver = context.getContentResolver();
 
         rclone = new Rclone(context);
-        log2File = new Log2File(context);
         dataDirectoryPath = Environment.getExternalStorageDirectory().getPath() + "/";
     }
 
@@ -72,11 +62,29 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     {
         try
         {
+            Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
             uploadFile();
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Caught an exception when trying to perform a sync", e);
         }
+    }
+
+    /**
+     * Generates a {@link SyncRequest} that can be used to schedule sync updates.
+     *
+     * @param context The context to use when creating the Sync {@link Account}.
+     * @return A {@link SyncRequest} that can be submitted to schedule a periodic sync.
+     */
+    public static SyncRequest generatePeriodicSyncRequest(Context context)
+    {
+        final Account dummyAccount = SyncMonkeyMainActivity.CreateSyncAccount(context);
+
+        return new SyncRequest.Builder()
+                .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)
+                .syncPeriodic(2 * SyncMonkeyConstants.SECONDS_IN_HOUR, 2 * SyncMonkeyConstants.SECONDS_IN_HOUR)
+                .setExtras(new Bundle()) // I think there is a bug in Android that makes setting this empty Bundle a requirement
+                .build();
     }
 
     private void uploadFile()
@@ -116,7 +124,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                     {
                         Log.d(LOG_TAG, line);
 
-                        // TODO Do something with this code
+                        // This code might be useful to show toasts with specific transfer information
                         /*if (line.startsWith("Transferred:") && !line.matches("Transferred:\\s+\\d+\\s+/\\s+\\d+,\\s+\\d+%$"))
                         {
                             String s = line.substring(12).trim();
@@ -139,8 +147,6 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                         {
                             log2File.log(line);
                         }*/
-
-                        // TODO updateNotification(uploadFileName, notificationContent, notificationBigText);
                     }
                 } catch (IOException e)
                 {
@@ -159,6 +165,5 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
             boolean result = currentProcess != null && currentProcess.exitValue() == 0;
             Log.i(LOG_TAG, "rclone upload result=" + result);
         }
-        // TODO onUploadFinished(remote.getName(), uploadPath, uploadFilePath, result);
     }
 }
