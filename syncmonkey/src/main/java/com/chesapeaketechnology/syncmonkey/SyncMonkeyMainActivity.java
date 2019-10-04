@@ -58,8 +58,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         dummyAccount = CreateSyncAccount(this);
 
         ActivityCompat.requestPermissions(this, new String[]{
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.READ_PHONE_STATE},
+                        Manifest.permission.READ_PHONE_STATE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE},
                 ACCESS_PERMISSION_REQUEST_ID);
     }
 

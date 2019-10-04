@@ -9,3 +9,4 @@
 .externalNativeBuild
 /syncmonkey/release/*
 .idea/*
+rclone.conf
