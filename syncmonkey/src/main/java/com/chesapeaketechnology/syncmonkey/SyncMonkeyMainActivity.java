@@ -51,8 +51,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
 
-        copyRcloneConfigFileIfNecessary();
-        readSyncMonkeyPropertiesFromFile();
+        copyRcloneConfigFile(getApplicationContext());
+        readSyncMonkeyPropertiesFromFile(getApplicationContext());
 
         // Create the dummy account
         dummyAccount = CreateSyncAccount(this);
@@ -175,16 +175,14 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     }
 
     /**
-     * First, checks to see if the {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} exists in the app's private storage area.  If it does not, then it is copied
-     * from the assets directory.
+     * Copies the {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} from the assets directory to the app's private storage area.
      */
-    private void copyRcloneConfigFileIfNecessary()
+    public static void copyRcloneConfigFile(Context context)
     {
-        final File rcloneConfigFile = new File(getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
-        if (rcloneConfigFile.exists()) return;
+        final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
 
         // The rclone.conf file does not exist, so copy it out of assets.
-        try (final InputStream assetRcloneConfigFileInputStream = getAssets().open(SyncMonkeyConstants.RCLONE_CONFIG_FILE);
+        try (final InputStream assetRcloneConfigFileInputStream = context.getAssets().open(SyncMonkeyConstants.RCLONE_CONFIG_FILE);
              final OutputStream privateAppRcloneConfigFileOutputStream = new FileOutputStream(rcloneConfigFile))
         {
             copyInputStreamToOutputStream(assetRcloneConfigFileInputStream, privateAppRcloneConfigFileOutputStream);
@@ -192,12 +190,32 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         {
             final String message = "The " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file was not found in the app's assets directory";
             Log.e(LOG_TAG, message, e);
-            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
         } catch (IOException e)
         {
             final String message = "Could not create the " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file";
             Log.e(LOG_TAG, message, e);
-            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Reads the {@link SyncMonkeyConstants#SYNC_MONKEY_PROPERTIES_FILE} and loads the values into the App's Shared Preferences.
+     */
+    public static void readSyncMonkeyPropertiesFromFile(Context context)
+    {
+        final Properties properties = new Properties();
+        try (final InputStream propertiesInputStream = context.getAssets().open(SyncMonkeyConstants.SYNC_MONKEY_PROPERTIES_FILE))
+        {
+            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+            final SharedPreferences.Editor edit = preferences.edit();
+
+            properties.load(propertiesInputStream);
+            properties.entrySet().forEach(preferenceEntry -> edit.putString((String) preferenceEntry.getKey(), (String) preferenceEntry.getValue()));
+            edit.apply();
+        } catch (Exception e)
+        {
+            Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
         }
     }
 
@@ -207,33 +225,13 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      * @throws IOException If the first byte cannot be read for any reason other than the end of the file, if the input stream has been closed, or if some
      *                     other I/O error occurs.
      */
-    private void copyInputStreamToOutputStream(InputStream in, OutputStream out) throws IOException
+    private static void copyInputStreamToOutputStream(InputStream in, OutputStream out) throws IOException
     {
         final byte[] buffer = new byte[1024];
         int read;
         while ((read = in.read(buffer)) != -1)
         {
             out.write(buffer, 0, read);
-        }
-    }
-
-    /**
-     * Reads the {@link SyncMonkeyConstants#SYNC_MONKEY_PROPERTIES_FILE} and loads the values into the App's Shared Preferences.
-     */
-    private void readSyncMonkeyPropertiesFromFile()
-    {
-        final Properties properties = new Properties();
-        try (final InputStream propertiesInputStream = getAssets().open(SyncMonkeyConstants.SYNC_MONKEY_PROPERTIES_FILE))
-        {
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            final SharedPreferences.Editor edit = preferences.edit();
-
-            properties.load(propertiesInputStream);
-            properties.entrySet().forEach(preferenceEntry -> edit.putString((String) preferenceEntry.getKey(), (String) preferenceEntry.getValue()));
-            edit.apply();
-        } catch (Exception e)
-        {
-            Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
         }
     }
 
