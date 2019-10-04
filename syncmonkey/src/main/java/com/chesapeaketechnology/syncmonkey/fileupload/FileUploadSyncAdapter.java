@@ -67,9 +67,16 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
         {
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
 
-            if(isTransmitOnVPN())
-                uploadFile();
+            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+            final boolean transmitOnlyOnVPN = Boolean.parseBoolean(preferences.getString(SyncMonkeyConstants.PROPERTY_VPN_ONLY, "true"));
 
+            if (transmitOnlyOnVPN)
+            {
+                if (isVpnEnabled()) uploadFile();
+            } else
+            {
+                uploadFile();
+            }
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Caught an exception when trying to perform a sync", e);
@@ -77,37 +84,35 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     }
 
     /**
-     * Check if the Android device is currently attached to a VPN and if we only want to transmit with VPN on.
-     * @return If the device is connected to VPN return true. If the device is not connected to VPN
-     * and VPN is required return false.
+     * Check if the Android device is currently attached to a VPN.
+     *
+     * @return If the device is connected to a VPN return true.
      */
-    private boolean isTransmitOnVPN() {
-        ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        Network[] networks = cm.getAllNetworks();
+    private boolean isVpnEnabled()
+    {
+        final ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) return false;
 
-        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-
-        final boolean transmitOnlyOnVPN = Boolean.parseBoolean(preferences.getString(SyncMonkeyConstants.PROPERTY_VPN_ONLY, "true"));
+        final Network[] networks = connectivityManager.getAllNetworks();
 
         boolean vpnEnabled = false;
 
         Log.i(LOG_TAG, "Network count: " + networks.length);
-        for (int i = 0; i < networks.length; i++) {
+        for (int i = 0; i < networks.length; i++)
+        {
+            final NetworkCapabilities caps = connectivityManager.getNetworkCapabilities(networks[i]);
+            if (caps == null) continue;
 
-            NetworkCapabilities caps = cm.getNetworkCapabilities(networks[i]);
-
-            Log.i(LOG_TAG, "Network " + i + ": " + networks[i].toString());
+            if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Network " + i + ": " + networks[i].toString());
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN))
+            {
                 vpnEnabled = true;
+            }
 
-            Log.i(LOG_TAG, "VPN transport?: " + vpnEnabled);
-
+            if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "VPN transport?: " + vpnEnabled);
         }
 
-        if (!vpnEnabled && transmitOnlyOnVPN)
-            return false;
-        else
-            return true;
+        return vpnEnabled;
     }
 
     /**
@@ -134,24 +139,25 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     {
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
 
-        final String remoteName = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_NAME, null);
+        final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
+        final String containerName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
         final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE, null);
         final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES, null);
         final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
 
-        if (remoteName == null || remoteType == null || localSyncDirectories == null)
+        if (configName == null || containerName == null || remoteType == null || localSyncDirectories == null)
         {
             Log.e(LOG_TAG, "Could not upload any files because the remoteName, remoteType, or localSyncDirectories was null");
             return;
         }
 
-        final RemoteItem remote = new RemoteItem(remoteName, remoteType);
+        final RemoteItem remote = new RemoteItem(configName + SyncMonkeyConstants.COLON_SEPARATOR + containerName, remoteType);
 
-        for (String relativeSyncDirectory : localSyncDirectories.split(":"))
+        for (String relativeSyncDirectory : localSyncDirectories.split(SyncMonkeyConstants.COLON_SEPARATOR))
         {
             final String localSyncDirectory = dataDirectoryPath + relativeSyncDirectory;
 
-            Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
+            if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
 
             Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, localSyncDirectory);
 

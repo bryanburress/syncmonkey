@@ -23,9 +23,12 @@ public class SyncMonkeyConstants
     public static final String ACCOUNT = "dummyaccount";
 
     public static final int SECONDS_IN_HOUR = 3600;
+    public static final String COLON_SEPARATOR = ":";
 
     // Properties
-    public static final String PROPERTY_REMOTE_NAME = "remoteName";
+    public static final String PROPERTY_CONFIG_NAME_KEY = "configName";
+    public static final String PROPERTY_CONTAINER_NAME_KEY = "containerName";
+    public static final String PROPERTY_AZURE_SAS_URL_KEY = "sas_url";
     public static final String PROPERTY_REMOTE_TYPE = "remoteType";
     public static final String PROPERTY_LOCAL_SYNC_DIRECTORIES = "localSyncDirectories";
     public static final String PROPERTY_DEVICE_ID = "deviceId";

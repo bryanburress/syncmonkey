@@ -6,6 +6,7 @@ import android.accounts.AccountManager;
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.RestrictionsManager;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -51,8 +52,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
 
-        copyRcloneConfigFile(getApplicationContext());
-        readSyncMonkeyPropertiesFromFile(getApplicationContext());
+        readSyncMonkeyProperties(getApplicationContext()); // The properties need to be read before installing the rclone config file
+        installRcloneConfigFile(getApplicationContext());
 
         // Create the dummy account
         dummyAccount = CreateSyncAccount(this);
@@ -175,9 +176,104 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     }
 
     /**
+     * Reads the {@link SyncMonkeyConstants#SYNC_MONKEY_PROPERTIES_FILE} and loads the values into the App's Shared Preferences.
+     */
+    public static void readSyncMonkeyProperties(Context context)
+    {
+        try (final InputStream propertiesInputStream = context.getAssets().open(SyncMonkeyConstants.SYNC_MONKEY_PROPERTIES_FILE))
+        {
+            // First read in the values from the properties file
+            Log.i(LOG_TAG, "Reading in the Sync Monkey properties file");
+            final Properties properties = new Properties();
+            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+            final SharedPreferences.Editor edit = preferences.edit();
+
+            properties.load(propertiesInputStream);
+            properties.entrySet().forEach(preferenceEntry -> edit.putString((String) preferenceEntry.getKey(), (String) preferenceEntry.getValue()));
+
+            // Next, read any MDM set values.  Doing this last so that we can overwrite the values from the properties file
+            Log.i(LOG_TAG, "Reading in any MDM configured properties");
+            final RestrictionsManager restrictionsManager = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
+            if (restrictionsManager != null)
+            {
+                final Bundle mdmProperties = restrictionsManager.getApplicationRestrictions();
+
+                mdmProperties.keySet().forEach(key -> {
+                    final Object property = mdmProperties.get(key);
+                    if (property instanceof String) edit.putString(key, (String) property);
+                });
+            }
+
+            // Finally, store the new values
+            edit.apply();
+        } catch (Exception e)
+        {
+            Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
+        }
+    }
+
+    /**
+     * Checks to see if the SAS key is in the app properties.  If it is, then create the config file using the properties
+     */
+    public static void installRcloneConfigFile(Context context)
+    {
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+
+        if (preferences.contains(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY))
+        {
+            createNewRcloneConfigFile(context, preferences);
+        } else
+        {
+            copyRcloneConfigFile(context);
+        }
+    }
+
+    /**
+     * Creates a new {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} in the app's private storage area using the values from the shared preferences.
+     */
+    private static void createNewRcloneConfigFile(Context context, SharedPreferences preferences)
+    {
+        final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
+
+        // The rclone.conf file does not exist, so copy it out of assets.
+        try (final OutputStream privateAppRcloneConfigFileOutputStream = new FileOutputStream(rcloneConfigFile))
+        {
+            final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
+            final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE, null);
+            final String sasUrl = preferences.getString(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY, null);
+
+            if (configName == null || remoteType == null || sasUrl == null)
+            {
+                Log.e(LOG_TAG, "One of the values were null when trying to create a new rclone config file");
+                return;
+            }
+
+            final String configNameWithBracketsEntry = "[" + configName + "]" + System.lineSeparator();
+            final String typeEntry = "type = " + remoteType + System.lineSeparator();
+            final String sasUrlEntry = "sas_url = " + sasUrl + System.lineSeparator();
+
+            privateAppRcloneConfigFileOutputStream.write(configNameWithBracketsEntry.getBytes());
+            privateAppRcloneConfigFileOutputStream.write(typeEntry.getBytes());
+            privateAppRcloneConfigFileOutputStream.write(sasUrlEntry.getBytes());
+
+            privateAppRcloneConfigFileOutputStream.flush();
+        } catch (FileNotFoundException e)
+        {
+            final String message = "The " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file was not found in the app's assets directory";
+            Log.e(LOG_TAG, message, e);
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+        } catch (IOException e)
+        {
+            final String message = "Could not create the " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file";
+            Log.e(LOG_TAG, message, e);
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
      * Copies the {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} from the assets directory to the app's private storage area.
      */
-    public static void copyRcloneConfigFile(Context context)
+    private static void copyRcloneConfigFile(Context context)
     {
         final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
 
@@ -196,26 +292,6 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             final String message = "Could not create the " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file";
             Log.e(LOG_TAG, message, e);
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * Reads the {@link SyncMonkeyConstants#SYNC_MONKEY_PROPERTIES_FILE} and loads the values into the App's Shared Preferences.
-     */
-    public static void readSyncMonkeyPropertiesFromFile(Context context)
-    {
-        final Properties properties = new Properties();
-        try (final InputStream propertiesInputStream = context.getAssets().open(SyncMonkeyConstants.SYNC_MONKEY_PROPERTIES_FILE))
-        {
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-            final SharedPreferences.Editor edit = preferences.edit();
-
-            properties.load(propertiesInputStream);
-            properties.entrySet().forEach(preferenceEntry -> edit.putString((String) preferenceEntry.getKey(), (String) preferenceEntry.getValue()));
-            edit.apply();
-        } catch (Exception e)
-        {
-            Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
         }
     }
 

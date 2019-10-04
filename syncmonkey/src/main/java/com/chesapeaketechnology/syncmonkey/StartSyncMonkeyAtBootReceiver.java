@@ -29,8 +29,8 @@ public class StartSyncMonkeyAtBootReceiver extends BroadcastReceiver
         {
             Log.i(LOG_TAG, "Auto starting the Sync Monkey Sync Adapter");
 
-            SyncMonkeyMainActivity.copyRcloneConfigFile(context);
-            SyncMonkeyMainActivity.readSyncMonkeyPropertiesFromFile(context);
+            SyncMonkeyMainActivity.readSyncMonkeyProperties(context); // The properties need to be read before installing the rclone config file
+            SyncMonkeyMainActivity.installRcloneConfigFile(context);
 
             ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(context));
         }
