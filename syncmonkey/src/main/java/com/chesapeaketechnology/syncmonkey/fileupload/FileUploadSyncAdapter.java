@@ -7,6 +7,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SyncRequest;
 import android.content.SyncResult;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -63,11 +66,48 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
         try
         {
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
-            uploadFile();
+
+            if(isTransmitOnVPN())
+                uploadFile();
+
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Caught an exception when trying to perform a sync", e);
         }
+    }
+
+    /**
+     * Check if the Android device is currently attached to a VPN and if we only want to transmit with VPN on.
+     * @return If the device is connected to VPN return true. If the device is not connected to VPN
+     * and VPN is required return false.
+     */
+    private boolean isTransmitOnVPN() {
+        ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network[] networks = cm.getAllNetworks();
+
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+
+        final boolean transmitOnlyOnVPN = Boolean.parseBoolean(preferences.getString(SyncMonkeyConstants.PROPERTY_VPN_ONLY, "true"));
+
+        boolean vpnEnabled = false;
+
+        Log.i(LOG_TAG, "Network count: " + networks.length);
+        for (int i = 0; i < networks.length; i++) {
+
+            NetworkCapabilities caps = cm.getNetworkCapabilities(networks[i]);
+
+            Log.i(LOG_TAG, "Network " + i + ": " + networks[i].toString());
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN))
+                vpnEnabled = true;
+
+            Log.i(LOG_TAG, "VPN transport?: " + vpnEnabled);
+
+        }
+
+        if (!vpnEnabled && transmitOnlyOnVPN)
+            return false;
+        else
+            return true;
     }
 
     /**

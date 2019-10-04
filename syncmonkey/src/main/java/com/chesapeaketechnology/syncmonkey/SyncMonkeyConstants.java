@@ -30,6 +30,7 @@ public class SyncMonkeyConstants
     public static final String PROPERTY_LOCAL_SYNC_DIRECTORIES = "localSyncDirectories";
     public static final String PROPERTY_DEVICE_ID = "deviceId";
     public static final String PROPERTY_AUTO_START_ON_BOOT = "autoStartOnBoot";
+    public static final String PROPERTY_VPN_ONLY = "vpnOnly";
 
     public static final String DEFAULT_DEVICE_ID = "UnknownDeviceId";
 }
