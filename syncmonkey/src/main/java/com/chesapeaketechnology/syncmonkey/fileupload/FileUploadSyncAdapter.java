@@ -68,7 +68,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
 
             final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-            final boolean transmitOnlyOnVPN = Boolean.parseBoolean(preferences.getString(SyncMonkeyConstants.PROPERTY_VPN_ONLY, "true"));
+            final boolean transmitOnlyOnVPN = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
 
             if (transmitOnlyOnVPN)
             {
@@ -123,7 +123,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
      */
     public static SyncRequest generatePeriodicSyncRequest(Context context)
     {
-        final Account dummyAccount = SyncMonkeyMainActivity.CreateSyncAccount(context);
+        final Account dummyAccount = SyncMonkeyMainActivity.createSyncAccount(context);
 
         return new SyncRequest.Builder()
                 .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)
@@ -141,9 +141,9 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
         final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
         final String containerName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
-        final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE, null);
-        final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES, null);
-        final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
+        final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE_KEY, null);
+        final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
+        final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
 
         if (configName == null || containerName == null || remoteType == null || localSyncDirectories == null)
         {

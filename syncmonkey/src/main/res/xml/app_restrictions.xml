@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <restriction
+        android:defaultValue="azureconfig"
+        android:description="@string/config_name_description"
+        android:key="configName"
+        android:restrictionType="string"
+        android:title="@string/config_name_title" />
+
+    <restriction
+        android:defaultValue="synctest"
+        android:description="@string/container_name_description"
+        android:key="containerName"
+        android:restrictionType="string"
+        android:title="@string/container_name_title" />
+
+    <restriction
+        android:defaultValue=""
+        android:description="@string/sas_url_description"
+        android:key="sas_url"
+        android:restrictionType="hidden"
+        android:title="@string/sas_url_title" />
+
+    <restriction
+        android:defaultValue="azureblob"
+        android:description="@string/remote_type_description"
+        android:key="remoteType"
+        android:restrictionType="string"
+        android:title="@string/remote_type_title" />
+
+    <restriction
+        android:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
+        android:description="@string/local_sync_directories_description"
+        android:key="localSyncDirectories"
+        android:restrictionType="string"
+        android:title="@string/local_sync_directories_title" />
+
+    <restriction
+        android:defaultValue="UnknownDeviceId"
+        android:description="@string/device_id_description"
+        android:key="deviceId"
+        android:restrictionType="string"
+        android:title="@string/device_id_title" />
+
+    <restriction
+        android:defaultValue="true"
+        android:description="@string/auto_start_on_boot_description"
+        android:key="autoStartOnBoot"
+        android:restrictionType="bool"
+        android:title="@string/auto_start_on_boot_title" />
+
+    <restriction
+        android:defaultValue="true"
+        android:description="@string/vpn_only_description"
+        android:key="vpnOnly"
+        android:restrictionType="bool"
+        android:title="@string/vpn_only_title" />
+
+</restrictions>

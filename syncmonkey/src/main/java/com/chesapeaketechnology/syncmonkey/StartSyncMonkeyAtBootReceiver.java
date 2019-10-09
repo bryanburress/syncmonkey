@@ -23,7 +23,7 @@ public class StartSyncMonkeyAtBootReceiver extends BroadcastReceiver
         if (null == intent) return;
 
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        final boolean autoStartOnBootPreference = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT, true);
+        final boolean autoStartOnBootPreference = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
 
         if (autoStartOnBootPreference && Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))
         {
@@ -33,6 +33,9 @@ public class StartSyncMonkeyAtBootReceiver extends BroadcastReceiver
             SyncMonkeyMainActivity.installRcloneConfigFile(context);
 
             ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(context));
+
+            // Register a listener for Managed Configuration changes.
+            SyncMonkeyMainActivity.registerManagedConfigurationListener(context);
         }
     }
 }

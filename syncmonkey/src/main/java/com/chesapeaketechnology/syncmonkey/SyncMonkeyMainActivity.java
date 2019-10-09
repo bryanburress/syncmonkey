@@ -4,8 +4,11 @@ import android.Manifest;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.RestrictionsManager;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -39,6 +42,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     private static final int ACCESS_PERMISSION_REQUEST_ID = 1;
 
     private Account dummyAccount;
+    private BroadcastReceiver managedConfigurationListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -52,11 +56,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
 
-        readSyncMonkeyProperties(getApplicationContext()); // The properties need to be read before installing the rclone config file
-        installRcloneConfigFile(getApplicationContext());
-
         // Create the dummy account
-        dummyAccount = CreateSyncAccount(this);
+        dummyAccount = createSyncAccount(this);
 
         ActivityCompat.requestPermissions(this, new String[]{
                         Manifest.permission.READ_PHONE_STATE,
@@ -92,6 +93,33 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         }
     }
 
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+
+        // Per the Android developer tutorials it is recommended to read the managed configuration in the onResume method
+        final Context applicationContext = getApplicationContext();
+        readSyncMonkeyProperties(applicationContext); // The properties and managed config need to be read before installing the rclone config file
+        readSyncMonkeyManagedConfiguration(applicationContext);
+
+        installRcloneConfigFile(applicationContext);
+
+        managedConfigurationListener = registerManagedConfigurationListener(applicationContext);
+    }
+
+    @Override
+    protected void onPause()
+    {
+        super.onPause();
+
+        if (managedConfigurationListener != null)
+        {
+            getApplicationContext().unregisterReceiver(managedConfigurationListener);
+            managedConfigurationListener = null;
+        }
+    }
+
     /**
      * Get the device ID, and place it in the shared preferences.  This is needed to represent the device specific directory on the remote upload server.
      */
@@ -100,7 +128,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         final SharedPreferences.Editor edit = preferences.edit();
 
-        edit.putString(SyncMonkeyConstants.PROPERTY_DEVICE_ID, getDeviceId());
+        edit.putString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, getDeviceId());
         edit.apply();
     }
 
@@ -143,7 +171,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      *
      * @param context The application context
      */
-    public static Account CreateSyncAccount(Context context)
+    public static Account createSyncAccount(Context context)
     {
         // Create the account type and default account
         Account newAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
@@ -186,10 +214,46 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             Log.i(LOG_TAG, "Reading in the Sync Monkey properties file");
             final Properties properties = new Properties();
             final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-            final SharedPreferences.Editor edit = preferences.edit();
+            final SharedPreferences.Editor sharedPreferenceEditor = preferences.edit();
 
             properties.load(propertiesInputStream);
-            properties.entrySet().forEach(preferenceEntry -> edit.putString((String) preferenceEntry.getKey(), (String) preferenceEntry.getValue()));
+            properties.entrySet().forEach(preferenceEntry -> {
+                // Custom handling for the boolean preferences
+                final String key = (String) preferenceEntry.getKey();
+                switch (key)
+                {
+                    case SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY:
+                    case SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY:
+                        sharedPreferenceEditor.putBoolean(key, Boolean.parseBoolean((String) preferenceEntry.getValue()));
+                        break;
+
+                    default:
+                        sharedPreferenceEditor.putString(key, (String) preferenceEntry.getValue());
+                }
+            });
+
+            // Finally, store the new values
+            sharedPreferenceEditor.apply();
+
+            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            {
+                Log.i(LOG_TAG, "The Properties after reading in the properties file: " + preferences.getAll().toString()); // TODO delete me
+            }
+        } catch (Exception e)
+        {
+            Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
+        }
+    }
+
+    /**
+     * Reads the Sync Monkey Managed Configuration and loads the values into the App's Shared Preferences.
+     */
+    public static void readSyncMonkeyManagedConfiguration(Context context)
+    {
+        try
+        {
+            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+            final SharedPreferences.Editor sharedPreferenceEditor = preferences.edit();
 
             // Next, read any MDM set values.  Doing this last so that we can overwrite the values from the properties file
             Log.i(LOG_TAG, "Reading in any MDM configured properties");
@@ -200,16 +264,49 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
                 mdmProperties.keySet().forEach(key -> {
                     final Object property = mdmProperties.get(key);
-                    if (property instanceof String) edit.putString(key, (String) property);
+                    if (property instanceof String)
+                    {
+                        sharedPreferenceEditor.putString(key, (String) property);
+                    } else if (property instanceof Boolean)
+                    {
+                        sharedPreferenceEditor.putBoolean(key, (Boolean) property);
+                    }
                 });
             }
 
             // Finally, store the new values
-            edit.apply();
+            sharedPreferenceEditor.apply();
+
+            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            {
+                Log.i(LOG_TAG, "The Properties after reading in the managed config: " + preferences.getAll().toString()); // TODO delete me
+            }
         } catch (Exception e)
         {
-            Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
+            Log.e(LOG_TAG, "Can't read the Sync Monkey managed configuration", e);
         }
+    }
+
+    /**
+     * Register a listener so that if the Managed Config changes we will be notified of the new config.
+     */
+    public static BroadcastReceiver registerManagedConfigurationListener(Context context)
+    {
+        final IntentFilter restrictionsFilter = new IntentFilter(Intent.ACTION_APPLICATION_RESTRICTIONS_CHANGED);
+
+        final BroadcastReceiver restrictionsReceiver = new BroadcastReceiver()
+        {
+            @Override
+            public void onReceive(Context context, Intent intent)
+            {
+                readSyncMonkeyManagedConfiguration(context);
+                installRcloneConfigFile(context);
+            }
+        };
+
+        context.registerReceiver(restrictionsReceiver, restrictionsFilter);
+
+        return restrictionsReceiver;
     }
 
     /**
@@ -221,9 +318,11 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         if (preferences.contains(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY))
         {
+            Log.i(LOG_TAG, "Found the Azure SAS URL Property, creating a new rclone.conf file");
             createNewRcloneConfigFile(context, preferences);
         } else
         {
+            Log.i(LOG_TAG, "Did not find the Azure SAS URL Property, copying the rclone.conf file that was packaged with the APK");
             copyRcloneConfigFile(context);
         }
     }
@@ -239,7 +338,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         try (final OutputStream privateAppRcloneConfigFileOutputStream = new FileOutputStream(rcloneConfigFile))
         {
             final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
-            final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE, null);
+            final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE_KEY, null);
             final String sasUrl = preferences.getString(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY, null);
 
             if (configName == null || remoteType == null || sasUrl == null)
@@ -251,6 +350,13 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             final String configNameWithBracketsEntry = "[" + configName + "]" + System.lineSeparator();
             final String typeEntry = "type = " + remoteType + System.lineSeparator();
             final String sasUrlEntry = "sas_url = " + sasUrl + System.lineSeparator();
+
+            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            {
+                Log.i(LOG_TAG, "configNameWithBracketsEntry=" + configNameWithBracketsEntry);
+                Log.i(LOG_TAG, "typeEntry=" + typeEntry);
+                Log.i(LOG_TAG, "sasUrlEntry=" + sasUrlEntry); // TODO Delete me
+            }
 
             privateAppRcloneConfigFileOutputStream.write(configNameWithBracketsEntry.getBytes());
             privateAppRcloneConfigFileOutputStream.write(typeEntry.getBytes());
@@ -317,7 +423,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      * @return The IMEI if it can be found, otherwise the Android ID.
      */
     @SuppressWarnings("ConstantConditions")
-    @SuppressLint("HardwareIds")
+    @SuppressLint({"HardwareIds", "MissingPermission"})
     private String getDeviceId()
     {
         String deviceId = null;

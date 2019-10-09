@@ -9,4 +9,29 @@
     <string name="sync_button_description">All files will be automatically synced at a scheduled interval.
         Use the Sync Button below to force a sync.</string>
     <string name="sync_button_text">Sync Now</string>
+
+    <string name="config_name_title">configName</string>
+    <string name="config_name_description">The name of the configuration that will be placed in the rclone.conf file</string>
+
+    <string name="container_name_title">containerName</string>
+    <string name="container_name_description">The name of the Azure Blob Storage container where the files will be uploaded to</string>
+
+    <string name="sas_url_title">sas_url</string>
+    <string name="sas_url_description">SAS URL for connecting to the Azure Blob Storage</string>
+
+    <string name="remote_type_title">remoteType</string>
+    <string name="remote_type_description">The type of storage that the files will be uploaded to</string>
+
+    <string name="local_sync_directories_title">localSyncDirectories</string>
+    <string name="local_sync_directories_description">A colon separated list of relative directories to upload (e.g. Download/NetworkSurveyData:Download/NinjaGPS )</string>
+
+    <string name="device_id_title">deviceId</string>
+    <string name="device_id_description">The device ID, which will be used to create a folder to group all uploaded files together</string>
+
+    <string name="auto_start_on_boot_title">autoStartOnBoot</string>
+    <string name="auto_start_on_boot_description">If true, then the SyncMonkey app will run in the background on phone boot</string>
+
+    <string name="vpn_only_title">vpnOnly</string>
+    <string name="vpn_only_description">If true, then files will only be uploaded when a VPN is active</string>
+
 </resources>
