@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        app:key="wifiOnly"
+        app:summary="Controls whether files will only be uploaded when a Wi-Fi connection is active"
+        app:title="Wi-Fi Only Upload" />
+
+</PreferenceScreen>

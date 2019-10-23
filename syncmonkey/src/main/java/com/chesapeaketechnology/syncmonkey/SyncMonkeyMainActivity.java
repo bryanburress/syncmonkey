@@ -26,6 +26,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 
 import com.chesapeaketechnology.syncmonkey.fileupload.FileUploadSyncAdapter;
+import com.chesapeaketechnology.syncmonkey.settings.SettingsFragment;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -58,6 +59,11 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         // Create the dummy account
         dummyAccount = createSyncAccount(this);
+
+        /*getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.settings_container, new SettingsFragment())
+                .commit();*/
 
         ActivityCompat.requestPermissions(this, new String[]{
                         Manifest.permission.READ_PHONE_STATE,

@@ -34,6 +34,7 @@ public class SyncMonkeyConstants
     public static final String PROPERTY_DEVICE_ID_KEY = "deviceId";
     public static final String PROPERTY_AUTO_START_ON_BOOT_KEY = "autoStartOnBoot";
     public static final String PROPERTY_VPN_ONLY_KEY = "vpnOnly";
+    public static final String PROPERTY_WIFI_ONLY_KEY = "wifiOnly";
 
     public static final String DEFAULT_DEVICE_ID = "UnknownDeviceId";
 }

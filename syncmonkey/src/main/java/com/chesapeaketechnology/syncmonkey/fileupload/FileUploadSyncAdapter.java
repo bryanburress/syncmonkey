@@ -10,6 +10,7 @@ import android.content.SyncResult;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -69,6 +70,13 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
             final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
             final boolean transmitOnlyOnVPN = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
+            final boolean transmitOnlyOnWiFi = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY, true);
+
+            if (transmitOnlyOnWiFi && !isWiFiConnected())
+            {
+                Log.i(LOG_TAG, "Skipping upload because wifi is not connected and the wifiOnly property is true");
+                return;
+            }
 
             if (transmitOnlyOnVPN)
             {
@@ -81,6 +89,37 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
         {
             Log.e(LOG_TAG, "Caught an exception when trying to perform a sync", e);
         }
+    }
+
+    /**
+     * Check if the Android device is currently connected to a Wi-Fi network.
+     *
+     * @return If the device is connected to a Wi-Fi Network return true.
+     */
+    private boolean isWiFiConnected()
+    {
+        final ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) return false;
+
+        boolean wifiConnected = false;
+
+        for (Network network : connectivityManager.getAllNetworks())
+        {
+            NetworkInfo networkInfo = connectivityManager.getNetworkInfo(network);
+            if (networkInfo == null) continue;
+
+            if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI)
+            {
+                wifiConnected |= networkInfo.isConnected();
+            }
+            if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE)
+            {
+                wifiConnected |= networkInfo.isConnected();
+            }
+        }
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Wifi connected: " + wifiConnected);
+
+        return wifiConnected;
     }
 
     /**
@@ -97,7 +136,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
         boolean vpnEnabled = false;
 
-        Log.i(LOG_TAG, "Network count: " + networks.length);
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Network count: " + networks.length);
         for (int i = 0; i < networks.length; i++)
         {
             final NetworkCapabilities caps = connectivityManager.getNetworkCapabilities(networks[i]);

@@ -34,4 +34,7 @@
     <string name="vpn_only_title">vpnOnly</string>
     <string name="vpn_only_description">If true, then files will only be uploaded when a VPN is active</string>
 
+    <string name="wifi_only_title">wifiOnly</string>
+    <string name="wifi_only_description">If true, then files will only be uploaded when a Wi-Fi connection is active</string>
+
 </resources>

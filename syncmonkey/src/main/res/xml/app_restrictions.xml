@@ -57,4 +57,12 @@
         android:restrictionType="bool"
         android:title="@string/vpn_only_title" />
 
+    <restriction
+        android:defaultValue="true"
+        android:description="@string/wifi_only_description"
+        android:key="wifiOnly"
+        android:restrictionType="bool"
+        android:title="@string/wifi_only_title" />
+
+
 </restrictions>
