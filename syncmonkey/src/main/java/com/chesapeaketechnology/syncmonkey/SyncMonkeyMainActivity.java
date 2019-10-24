@@ -18,6 +18,8 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -26,6 +28,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 
 import com.chesapeaketechnology.syncmonkey.fileupload.FileUploadSyncAdapter;
+import com.chesapeaketechnology.syncmonkey.settings.SettingsActivity;
 import com.chesapeaketechnology.syncmonkey.settings.SettingsFragment;
 
 import java.io.File;
@@ -60,10 +63,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         // Create the dummy account
         dummyAccount = createSyncAccount(this);
 
-        /*getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.settings_container, new SettingsFragment())
-                .commit();*/
+        // Install the defaults specified in the XML preferences file, this is only done the first time the app is opened
+        androidx.preference.PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
 
         ActivityCompat.requestPermissions(this, new String[]{
                         Manifest.permission.READ_PHONE_STATE,
@@ -124,6 +125,28 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             getApplicationContext().unregisterReceiver(managedConfigurationListener);
             managedConfigurationListener = null;
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_sync_monkey, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        int id = item.getItemId();
+
+        if (id == R.id.action_settings)
+        {
+            startActivity(new Intent(SyncMonkeyMainActivity.this, SettingsActivity.class));
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     /**
@@ -230,6 +253,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 {
                     case SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY:
                     case SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY:
+                    case SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY:
                         sharedPreferenceEditor.putBoolean(key, Boolean.parseBoolean((String) preferenceEntry.getValue()));
                         break;
 

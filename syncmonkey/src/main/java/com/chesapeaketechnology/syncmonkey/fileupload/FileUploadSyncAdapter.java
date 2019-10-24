@@ -69,8 +69,14 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
 
             final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-            final boolean transmitOnlyOnVPN = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
+            final boolean transmitOnlyOnVpn = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
             final boolean transmitOnlyOnWiFi = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY, true);
+
+            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            {
+                Log.i(LOG_TAG, "Wi-Fi Only Upload Preference: " + transmitOnlyOnWiFi);
+                Log.i(LOG_TAG, "VPN Only Upload Preference: " + transmitOnlyOnVpn);
+            }
 
             if (transmitOnlyOnWiFi && !isWiFiConnected())
             {
@@ -78,7 +84,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                 return;
             }
 
-            if (transmitOnlyOnVPN)
+            if (transmitOnlyOnVpn)
             {
                 if (isVpnEnabled()) uploadFile();
             } else

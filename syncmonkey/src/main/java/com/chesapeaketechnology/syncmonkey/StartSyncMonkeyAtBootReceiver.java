@@ -22,10 +22,14 @@ public class StartSyncMonkeyAtBootReceiver extends BroadcastReceiver
     {
         if (null == intent) return;
 
+        if (!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
+
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         final boolean autoStartOnBootPreference = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
 
-        if (autoStartOnBootPreference && Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Auto Start at Boot Preference: " + autoStartOnBootPreference);
+
+        if (autoStartOnBootPreference)
         {
             Log.i(LOG_TAG, "Auto starting the Sync Monkey Sync Adapter");
 

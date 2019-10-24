@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">Sync Monkey</string>
 
+    <string name="settings">Settings</string>
+
     <string name="pref_key_logs">pref_key_logs</string>
     <string name="hash_error">ERROR</string>
     <string name="hash_unsupported">UNSUPPORTED</string>
@@ -28,13 +30,24 @@
     <string name="device_id_title">deviceId</string>
     <string name="device_id_description">The device ID, which will be used to create a folder to group all uploaded files together</string>
 
-    <string name="auto_start_on_boot_title">autoStartOnBoot</string>
+    <string name="auto_start_on_boot_title">Auto Start On Boot</string>
     <string name="auto_start_on_boot_description">If true, then the SyncMonkey app will run in the background on phone boot</string>
 
-    <string name="vpn_only_title">vpnOnly</string>
-    <string name="vpn_only_description">If true, then files will only be uploaded when a VPN is active</string>
+    <string name="vpn_only_title">VPN Only Upload</string>
+    <string name="vpn_only_description">Controls whether files will only be uploaded when a VPN connection is active</string>
 
-    <string name="wifi_only_title">wifiOnly</string>
-    <string name="wifi_only_description">If true, then files will only be uploaded when a Wi-Fi connection is active</string>
+    <string name="wifi_only_title">Wi-Fi Only Upload</string>
+    <string name="wifi_only_description">Controls whether files will only be uploaded when a Wi-Fi connection is active</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- User Preference Constants -->
+    <string name="wifi_only_summary_on">Upload files only over Wi-Fi</string>
+    <string name="wifi_only_summary_off">Upload files over Wi-Fi and Cellular</string>
+
+    <string name="vpn_only_summary_on">Upload files only when a VPN connection is active</string>
+    <string name="vpn_only_summary_off">Upload files regardless of a active VPN connection</string>
+
+    <string name="auto_start_summary_on">The Sync Monkey app will be started in the background when the phone is rebooted</string>
+    <string name="auto_start_summary_off">The Sync Monkey app will not run in the background, manual upload is required to sync files</string>
 
 </resources>

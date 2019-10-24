@@ -2,8 +2,27 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <SwitchPreferenceCompat
+        app:defaultValue="true"
+        app:icon="@drawable/ic_wifi"
         app:key="wifiOnly"
-        app:summary="Controls whether files will only be uploaded when a Wi-Fi connection is active"
-        app:title="Wi-Fi Only Upload" />
+        app:summaryOff="@string/wifi_only_summary_off"
+        app:summaryOn="@string/wifi_only_summary_on"
+        app:title="@string/wifi_only_title" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="false"
+        app:icon="@drawable/ic_vpn"
+        app:key="vpnOnly"
+        app:summaryOff="@string/vpn_only_summary_off"
+        app:summaryOn="@string/vpn_only_summary_on"
+        app:title="@string/vpn_only_title" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="false"
+        app:icon="@drawable/ic_auto_start"
+        app:key="autoStartOnBoot"
+        app:summaryOff="@string/auto_start_summary_off"
+        app:summaryOn="@string/auto_start_summary_on"
+        app:title="@string/auto_start_on_boot_title" />
 
 </PreferenceScreen>
