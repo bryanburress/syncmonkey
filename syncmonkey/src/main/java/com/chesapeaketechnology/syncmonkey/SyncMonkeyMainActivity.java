@@ -29,7 +29,6 @@ import androidx.core.app.ActivityCompat;
 
 import com.chesapeaketechnology.syncmonkey.fileupload.FileUploadSyncAdapter;
 import com.chesapeaketechnology.syncmonkey.settings.SettingsActivity;
-import com.chesapeaketechnology.syncmonkey.settings.SettingsFragment;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -90,7 +89,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 {
                     if (grantResults[index] == PackageManager.PERMISSION_GRANTED)
                     {
-                        initializeSyncAdapter();
+                        initializeSyncAdapterIfNecessary();
                     } else
                     {
                         Log.w(LOG_TAG, "The READ_EXTERNAL_STORAGE Permission was denied.");
@@ -113,6 +112,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         installRcloneConfigFile(applicationContext);
 
         managedConfigurationListener = registerManagedConfigurationListener(applicationContext);
+
+        initializeSyncAdapterIfNecessary();
     }
 
     @Override
@@ -154,7 +155,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      */
     private void initializeDeviceId()
     {
-        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         final SharedPreferences.Editor edit = preferences.edit();
 
         edit.putString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, getDeviceId());
@@ -162,9 +163,9 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     }
 
     /**
-     * Initializes the sync adapter to run at a periodic interval.
+     * Initializes the sync adapter to run at a periodic interval if the Auto Start preferences is set to true AND the periodic sync adapter is not already added.
      */
-    private void initializeSyncAdapter()
+    private synchronized void initializeSyncAdapterIfNecessary()
     {
         Log.i(LOG_TAG, "Initializing the Sync Monkey Sync Adapter");
 
@@ -174,7 +175,19 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             return;
         }
 
-        ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
+        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        final boolean autoStartOnBootPreference = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
+
+        final Account syncAccount = createSyncAccount(this);
+        if (autoStartOnBootPreference && ContentResolver.getPeriodicSyncs(syncAccount, SyncMonkeyConstants.AUTHORITY).isEmpty())
+        {
+            Log.i(LOG_TAG, "Adding the periodic sync adapter for Sync Monkey");
+            ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
+        } else if (!autoStartOnBootPreference)
+        {
+            Log.i(LOG_TAG, "Removing the periodic sync adapter for Sync Monkey");
+            ContentResolver.removePeriodicSync(syncAccount, SyncMonkeyConstants.AUTHORITY, new Bundle());
+        }
     }
 
     /**
@@ -265,10 +278,10 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             // Finally, store the new values
             sharedPreferenceEditor.apply();
 
-            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            /*if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
-                Log.i(LOG_TAG, "The Properties after reading in the properties file: " + preferences.getAll().toString()); // TODO delete me
-            }
+                Log.i(LOG_TAG, "The Properties after reading in the properties file: " + preferences.getAll().toString());
+            }*/
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
@@ -307,10 +320,10 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             // Finally, store the new values
             sharedPreferenceEditor.apply();
 
-            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            /*if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
-                Log.i(LOG_TAG, "The Properties after reading in the managed config: " + preferences.getAll().toString()); // TODO delete me
-            }
+                Log.i(LOG_TAG, "The Properties after reading in the managed config: " + preferences.getAll().toString());
+            }*/
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Can't read the Sync Monkey managed configuration", e);
@@ -360,32 +373,29 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Creates a new {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} in the app's private storage area using the values from the shared preferences.
      */
-    private static void createNewRcloneConfigFile(Context context, SharedPreferences preferences)
+    private static synchronized void createNewRcloneConfigFile(Context context, SharedPreferences preferences)
     {
         final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
 
         // The rclone.conf file does not exist, so copy it out of assets.
         try (final OutputStream privateAppRcloneConfigFileOutputStream = new FileOutputStream(rcloneConfigFile))
         {
-            final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
-            final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE_KEY, null);
             final String sasUrl = preferences.getString(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY, null);
 
-            if (configName == null || remoteType == null || sasUrl == null)
+            if (sasUrl == null)
             {
                 Log.e(LOG_TAG, "One of the values were null when trying to create a new rclone config file");
                 return;
             }
 
-            final String configNameWithBracketsEntry = "[" + configName + "]" + System.lineSeparator();
-            final String typeEntry = "type = " + remoteType + System.lineSeparator();
+            final String configNameWithBracketsEntry = "[" + SyncMonkeyConstants.AZURE_CONFIG_NAME + "]" + System.lineSeparator();
+            final String typeEntry = "type = " + SyncMonkeyConstants.AZURE_REMOTE_TYPE + System.lineSeparator();
             final String sasUrlEntry = "sas_url = " + sasUrl + System.lineSeparator();
 
             if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
                 Log.i(LOG_TAG, "configNameWithBracketsEntry=" + configNameWithBracketsEntry);
                 Log.i(LOG_TAG, "typeEntry=" + typeEntry);
-                Log.i(LOG_TAG, "sasUrlEntry=" + sasUrlEntry); // TODO Delete me
             }
 
             privateAppRcloneConfigFileOutputStream.write(configNameWithBracketsEntry.getBytes());
@@ -409,7 +419,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Copies the {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} from the assets directory to the app's private storage area.
      */
-    private static void copyRcloneConfigFile(Context context)
+    private static synchronized void copyRcloneConfigFile(Context context)
     {
         final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
 

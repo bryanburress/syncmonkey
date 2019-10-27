@@ -18,11 +18,32 @@
         app:title="@string/vpn_only_title" />
 
     <SwitchPreferenceCompat
-        app:defaultValue="false"
+        app:defaultValue="true"
         app:icon="@drawable/ic_auto_start"
         app:key="autoStartOnBoot"
         app:summaryOff="@string/auto_start_summary_off"
         app:summaryOn="@string/auto_start_summary_on"
         app:title="@string/auto_start_on_boot_title" />
+
+    <PreferenceCategory
+        app:initialExpandedChildrenCount="0"
+        app:key="serverConfig"
+        app:title="@string/server_config_title">
+
+        <EditTextPreference
+            app:defaultValue="synctest"
+            app:dialogMessage="@string/container_name_description"
+            app:key="containerName"
+            app:title="@string/container_name_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
+            app:dialogMessage="@string/sync_directories_summary"
+            app:key="localSyncDirectories"
+            app:title="@string/sync_directories_title"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
 
 </PreferenceScreen>

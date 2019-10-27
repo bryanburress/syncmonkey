@@ -182,43 +182,43 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
      */
     private void uploadFile()
     {
-        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-
-        final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
-        final String containerName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
-        final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE_KEY, null);
-        final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
-        final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
-
-        if (configName == null || containerName == null || remoteType == null || localSyncDirectories == null)
+        synchronized (SyncMonkeyMainActivity.class)
         {
-            Log.e(LOG_TAG, "Could not upload any files because the remoteName, remoteType, or localSyncDirectories was null");
-            return;
-        }
+            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
 
-        final RemoteItem remote = new RemoteItem(configName + SyncMonkeyConstants.COLON_SEPARATOR + containerName, remoteType);
+            final String containerName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
+            final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
+            final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
 
-        for (String relativeSyncDirectory : localSyncDirectories.split(SyncMonkeyConstants.COLON_SEPARATOR))
-        {
-            final String localSyncDirectory = dataDirectoryPath + relativeSyncDirectory;
-
-            if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
-
-            Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, localSyncDirectory);
-
-            if (currentProcess != null)
+            if (containerName == null || localSyncDirectories == null)
             {
-                try
-                {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream()));
-                    String line;
-                    //String notificationContent = "";
-                    //String[] notificationBigText = new String[5];
-                    while ((line = reader.readLine()) != null)
-                    {
-                        Log.d(LOG_TAG, line);
+                Log.e(LOG_TAG, "Could not upload any files because the containerName or localSyncDirectories was null");
+                return;
+            }
 
-                        // This code might be useful to show toasts with specific transfer information
+            final RemoteItem remote = new RemoteItem(SyncMonkeyConstants.AZURE_CONFIG_NAME + SyncMonkeyConstants.COLON_SEPARATOR + containerName, SyncMonkeyConstants.AZURE_REMOTE_TYPE);
+
+            for (String relativeSyncDirectory : localSyncDirectories.split(SyncMonkeyConstants.COLON_SEPARATOR))
+            {
+                final String localSyncDirectory = dataDirectoryPath + relativeSyncDirectory;
+
+                if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
+
+                Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, localSyncDirectory);
+
+                if (currentProcess != null)
+                {
+                    try
+                    {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream()));
+                        String line;
+                        //String notificationContent = "";
+                        //String[] notificationBigText = new String[5];
+                        while ((line = reader.readLine()) != null)
+                        {
+                            Log.d(LOG_TAG, line);
+
+                            // This code might be useful to show toasts with specific transfer information
                         /*if (line.startsWith("Transferred:") && !line.matches("Transferred:\\s+\\d+\\s+/\\s+\\d+,\\s+\\d+%$"))
                         {
                             String s = line.substring(12).trim();
@@ -241,23 +241,24 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                         {
                             log2File.log(line);
                         }*/
+                        }
+                    } catch (IOException e)
+                    {
+                        Log.e(LOG_TAG, "Caught an exception when trying to read an error from the upload process", e);
                     }
-                } catch (IOException e)
-                {
-                    Log.e(LOG_TAG, "Caught an exception when trying to read an error from the upload process", e);
+
+                    try
+                    {
+                        currentProcess.waitFor();
+                    } catch (InterruptedException e)
+                    {
+                        Log.e(LOG_TAG, "Caught an exception when waiting for the rclone upload process to finish", e);
+                    }
                 }
 
-                try
-                {
-                    currentProcess.waitFor();
-                } catch (InterruptedException e)
-                {
-                    Log.e(LOG_TAG, "Caught an exception when waiting for the rclone upload process to finish", e);
-                }
+                boolean result = currentProcess != null && currentProcess.exitValue() == 0;
+                Log.i(LOG_TAG, "rclone upload result=" + result);
             }
-
-            boolean result = currentProcess != null && currentProcess.exitValue() == 0;
-            Log.i(LOG_TAG, "rclone upload result=" + result);
         }
     }
 }
