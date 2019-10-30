@@ -9,7 +9,7 @@
         android:title="@string/config_name_title" />-->
 
     <restriction
-        android:defaultValue="synctest"
+        android:defaultValue="rapidlab-blob"
         android:description="@string/container_name_description"
         android:key="containerName"
         android:restrictionType="string"

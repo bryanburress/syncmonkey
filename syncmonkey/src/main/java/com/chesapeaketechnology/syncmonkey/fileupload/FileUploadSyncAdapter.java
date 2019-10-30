@@ -13,8 +13,9 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
-import android.preference.PreferenceManager;
 import android.util.Log;
+
+import android.preference.PreferenceManager;
 
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyConstants;
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyMainActivity;
@@ -168,7 +169,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
      */
     public static SyncRequest generatePeriodicSyncRequest(Context context)
     {
-        final Account dummyAccount = SyncMonkeyMainActivity.createSyncAccount(context);
+        final Account dummyAccount = SyncMonkeyMainActivity.getSyncAccount(context);
 
         return new SyncRequest.Builder()
                 .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)

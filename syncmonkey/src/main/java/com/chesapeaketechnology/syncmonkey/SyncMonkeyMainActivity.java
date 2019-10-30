@@ -14,7 +14,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -26,6 +25,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
+import androidx.preference.PreferenceManager;
 
 import com.chesapeaketechnology.syncmonkey.fileupload.FileUploadSyncAdapter;
 import com.chesapeaketechnology.syncmonkey.settings.SettingsActivity;
@@ -44,7 +44,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
     private static final int ACCESS_PERMISSION_REQUEST_ID = 1;
 
-    private Account dummyAccount;
+    private static Account dummyAccount;
     private BroadcastReceiver managedConfigurationListener;
 
     @Override
@@ -60,7 +60,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
 
         // Create the dummy account
-        dummyAccount = createSyncAccount(this);
+        dummyAccount = getSyncAccount(this);
 
         // Install the defaults specified in the XML preferences file, this is only done the first time the app is opened
         androidx.preference.PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
@@ -105,13 +105,12 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         super.onResume();
 
         // Per the Android developer tutorials it is recommended to read the managed configuration in the onResume method
-        final Context applicationContext = getApplicationContext();
-        readSyncMonkeyProperties(applicationContext); // The properties and managed config need to be read before installing the rclone config file
-        readSyncMonkeyManagedConfiguration(applicationContext);
+        readSyncMonkeyProperties(this); // The properties and managed config need to be read before installing the rclone config file
+        readSyncMonkeyManagedConfiguration(this);
 
-        installRcloneConfigFile(applicationContext);
+        installRcloneConfigFile(this);
 
-        managedConfigurationListener = registerManagedConfigurationListener(applicationContext);
+        managedConfigurationListener = registerManagedConfigurationListener(this);
 
         initializeSyncAdapterIfNecessary();
     }
@@ -153,13 +152,21 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Get the device ID, and place it in the shared preferences.  This is needed to represent the device specific directory on the remote upload server.
      */
+    @SuppressLint("ApplySharedPref")
     private void initializeDeviceId()
     {
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        if (preferences.contains(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY))
+        {
+            Log.i(LOG_TAG, "The Device ID is already present in the Shared Preferences, skipping setting it to the App's default ID.");
+            return;
+        }
+
         final SharedPreferences.Editor edit = preferences.edit();
 
         edit.putString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, getDeviceId());
-        edit.apply();
+        edit.commit();
     }
 
     /**
@@ -178,12 +185,15 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         final boolean autoStartOnBootPreference = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
 
-        final Account syncAccount = createSyncAccount(this);
-        if (autoStartOnBootPreference && ContentResolver.getPeriodicSyncs(syncAccount, SyncMonkeyConstants.AUTHORITY).isEmpty())
+        final Account syncAccount = getSyncAccount(this);
+        if (autoStartOnBootPreference)
         {
+            // Per the ContentResolver#addPeriodicSync javadoc, if the is already another periodic sync scheduled with the account, authority, and extras, then
+            // a new periodic sync won't be added.  While the requestSync javadoc does not also say that, my guess is it is true as well.  Probably worth
+            // verifying at some point.
             Log.i(LOG_TAG, "Adding the periodic sync adapter for Sync Monkey");
             ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
-        } else if (!autoStartOnBootPreference)
+        } else
         {
             Log.i(LOG_TAG, "Removing the periodic sync adapter for Sync Monkey");
             ContentResolver.removePeriodicSync(syncAccount, SyncMonkeyConstants.AUTHORITY, new Bundle());
@@ -213,41 +223,44 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      *
      * @param context The application context
      */
-    public static Account createSyncAccount(Context context)
+    public static Account getSyncAccount(Context context)
     {
-        // Create the account type and default account
-        Account newAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
-        // Get an instance of the Android account manager
-        AccountManager accountManager = (AccountManager) context.getSystemService(ACCOUNT_SERVICE);
+        if (dummyAccount == null)
+        {
+            Log.i(LOG_TAG, "Creating a new Sync Account");
+            dummyAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
+            final AccountManager accountManager = (AccountManager) context.getSystemService(ACCOUNT_SERVICE);
 
-        /*
-         * Add the account and account type, no password or user data
-         * If successful, return the Account object, otherwise report an error.
-         */
-        if (accountManager != null && accountManager.addAccountExplicitly(newAccount, null, null))
-        {
             /*
-             * If you don't set android:syncable="true" in
-             * in your <provider> element in the manifest,
-             * then call context.setIsSyncable(account, AUTHORITY, 1)
-             * here.
+             * Add the account and account type, no password or user data
+             * If successful, return the Account object, otherwise report an error.
              */
-            return newAccount;
-        } else
-        {
-            /*
-             * The account exists or some other error occurred. Log this, report it,
-             * or handle it internally.
-             */
-            Log.v(LOG_TAG, "The account already exists, or the account manager could not be found");
+            if (accountManager != null && accountManager.addAccountExplicitly(dummyAccount, null, null))
+            {
+                /*
+                 * If you don't set android:syncable="true" in
+                 * in your <provider> element in the manifest,
+                 * then call context.setIsSyncable(account, AUTHORITY, 1)
+                 * here.
+                 */
+                return dummyAccount;
+            } else
+            {
+                /*
+                 * The account exists or some other error occurred. Log this, report it,
+                 * or handle it internally.
+                 */
+                Log.v(LOG_TAG, "The account already exists, or the account manager could not be found");
+            }
         }
 
-        return newAccount;
+        return dummyAccount;
     }
 
     /**
      * Reads the {@link SyncMonkeyConstants#SYNC_MONKEY_PROPERTIES_FILE} and loads the values into the App's Shared Preferences.
      */
+    @SuppressLint("ApplySharedPref")
     public static void readSyncMonkeyProperties(Context context)
     {
         try (final InputStream propertiesInputStream = context.getAssets().open(SyncMonkeyConstants.SYNC_MONKEY_PROPERTIES_FILE))
@@ -276,7 +289,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             });
 
             // Finally, store the new values
-            sharedPreferenceEditor.apply();
+            sharedPreferenceEditor.commit();
 
             /*if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
@@ -291,6 +304,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Reads the Sync Monkey Managed Configuration and loads the values into the App's Shared Preferences.
      */
+    @SuppressLint("ApplySharedPref")
     public static void readSyncMonkeyManagedConfiguration(Context context)
     {
         try
@@ -318,7 +332,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             }
 
             // Finally, store the new values
-            sharedPreferenceEditor.apply();
+            sharedPreferenceEditor.commit();
 
             /*if (Log.isLoggable(LOG_TAG, Log.INFO))
             {

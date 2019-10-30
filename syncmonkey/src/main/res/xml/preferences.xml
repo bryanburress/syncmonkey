@@ -31,7 +31,13 @@
         app:title="@string/server_config_title">
 
         <EditTextPreference
-            app:defaultValue="synctest"
+            app:dialogMessage="@string/device_id_description"
+            app:key="deviceId"
+            app:title="@string/device_id_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="rapidlab-blob"
             app:dialogMessage="@string/container_name_description"
             app:key="containerName"
             app:title="@string/container_name_title"
