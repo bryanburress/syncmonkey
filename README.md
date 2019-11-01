@@ -2,6 +2,7 @@
 
 The Sync Monkey Android App enables files on the Android device to be synced with a Microsoft Azure Blob storage.
 
+![App Screenshot](screenshots/Main_Screenshot_0.0.1.png "The Sync Monkey App Main Screen")
 
 ## Getting Started
 
