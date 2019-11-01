@@ -25,7 +25,7 @@
     <string name="remote_type_description">The type of storage that the files will be uploaded to</string>
 
     <string name="local_sync_directories_title">Local Sync Directories</string>
-    <string name="local_sync_directories_description">A colon separated list of relative directories to upload (e.g. Download/NetworkSurveyData:Download/NinjaGPS )</string>
+    <string name="local_sync_directories_description">A colon separated list of relative directories to upload (e.g. Download/NetworkSurveyData:Download/GPSMonkey )</string>
 
     <string name="device_id_title">Device ID</string>
     <string name="device_id_description">The device ID, which will be used to create a folder to group all uploaded files together</string>

@@ -37,7 +37,7 @@
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
-            app:defaultValue="rapidlab-blob"
+            app:defaultValue="azuretest-blob"
             app:dialogMessage="@string/container_name_description"
             app:key="containerName"
             app:title="@string/container_name_title"
@@ -50,7 +50,7 @@
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
-            app:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
+            app:defaultValue="Download/NetworkSurveyData:Download/GPSMonkey"
             app:dialogMessage="@string/sync_directories_summary"
             app:key="localSyncDirectories"
             app:title="@string/sync_directories_title"
