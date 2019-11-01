@@ -9,14 +9,12 @@
         android:title="@string/config_name_title" />-->
 
     <restriction
-        android:defaultValue="rapidlab-blob"
         android:description="@string/container_name_description"
         android:key="containerName"
         android:restrictionType="string"
         android:title="@string/container_name_title" />
 
     <restriction
-        android:defaultValue=""
         android:description="@string/sas_url_description"
         android:key="sas_url"
         android:restrictionType="hidden"
@@ -30,7 +28,7 @@
         android:title="@string/remote_type_title" />-->
 
     <restriction
-        android:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
+        android:defaultValue="Download/NetworkSurveyData:Download/GPSMonkey"
         android:description="@string/local_sync_directories_description"
         android:key="localSyncDirectories"
         android:restrictionType="string"
