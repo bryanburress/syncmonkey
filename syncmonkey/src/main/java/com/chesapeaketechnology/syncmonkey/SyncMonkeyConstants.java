@@ -25,15 +25,17 @@ public class SyncMonkeyConstants
     public static final int SECONDS_IN_HOUR = 3600;
     public static final String COLON_SEPARATOR = ":";
 
+    public static final String AZURE_CONFIG_NAME = "azureconfig";
+    public static final String AZURE_REMOTE_TYPE = "azureblob";
+
     // Properties
-    public static final String PROPERTY_CONFIG_NAME_KEY = "configName";
     public static final String PROPERTY_CONTAINER_NAME_KEY = "containerName";
     public static final String PROPERTY_AZURE_SAS_URL_KEY = "sas_url";
-    public static final String PROPERTY_REMOTE_TYPE_KEY = "remoteType";
     public static final String PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY = "localSyncDirectories";
     public static final String PROPERTY_DEVICE_ID_KEY = "deviceId";
     public static final String PROPERTY_AUTO_START_ON_BOOT_KEY = "autoStartOnBoot";
     public static final String PROPERTY_VPN_ONLY_KEY = "vpnOnly";
+    public static final String PROPERTY_WIFI_ONLY_KEY = "wifiOnly";
 
     public static final String DEFAULT_DEVICE_ID = "UnknownDeviceId";
 }

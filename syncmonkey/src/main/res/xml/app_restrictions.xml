@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <restrictions xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <restriction
+    <!--<restriction
         android:defaultValue="azureconfig"
         android:description="@string/config_name_description"
         android:key="configName"
         android:restrictionType="string"
-        android:title="@string/config_name_title" />
+        android:title="@string/config_name_title" />-->
 
     <restriction
-        android:defaultValue="synctest"
+        android:defaultValue="rapidlab-blob"
         android:description="@string/container_name_description"
         android:key="containerName"
         android:restrictionType="string"
@@ -22,12 +22,12 @@
         android:restrictionType="hidden"
         android:title="@string/sas_url_title" />
 
-    <restriction
+    <!--<restriction
         android:defaultValue="azureblob"
         android:description="@string/remote_type_description"
         android:key="remoteType"
         android:restrictionType="string"
-        android:title="@string/remote_type_title" />
+        android:title="@string/remote_type_title" />-->
 
     <restriction
         android:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
@@ -56,5 +56,13 @@
         android:key="vpnOnly"
         android:restrictionType="bool"
         android:title="@string/vpn_only_title" />
+
+    <restriction
+        android:defaultValue="true"
+        android:description="@string/wifi_only_description"
+        android:key="wifiOnly"
+        android:restrictionType="bool"
+        android:title="@string/wifi_only_title" />
+
 
 </restrictions>

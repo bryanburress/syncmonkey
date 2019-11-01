@@ -10,22 +10,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.RestrictionsManager;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
+import androidx.preference.PreferenceManager;
 
 import com.chesapeaketechnology.syncmonkey.fileupload.FileUploadSyncAdapter;
+import com.chesapeaketechnology.syncmonkey.settings.SettingsActivity;
+
+import net.grandcentrix.tray.AppPreferences;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -41,7 +45,9 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
     private static final int ACCESS_PERMISSION_REQUEST_ID = 1;
 
-    private Account dummyAccount;
+    private static Account dummyAccount;
+
+    private AppPreferences appPreferences;
     private BroadcastReceiver managedConfigurationListener;
 
     @Override
@@ -51,13 +57,19 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         Log.i(LOG_TAG, "Starting the SyncMonkey App");
 
+        appPreferences = new AppPreferences(this);
+
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
         setContentView(R.layout.activity_main);
         findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
 
         // Create the dummy account
-        dummyAccount = createSyncAccount(this);
+        dummyAccount = getSyncAccount(this);
+
+        // Install the defaults specified in the XML preferences file, this is only done the first time the app is opened
+        androidx.preference.PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+        copyDefaultSharedPreferencesToTrayPreferences();
 
         ActivityCompat.requestPermissions(this, new String[]{
                         Manifest.permission.READ_PHONE_STATE,
@@ -83,7 +95,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 {
                     if (grantResults[index] == PackageManager.PERMISSION_GRANTED)
                     {
-                        initializeSyncAdapter();
+                        initializeSyncAdapterIfNecessary();
                     } else
                     {
                         Log.w(LOG_TAG, "The READ_EXTERNAL_STORAGE Permission was denied.");
@@ -98,14 +110,22 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     {
         super.onResume();
 
+        // Really just a sanity check since it should have been initialized in the onCreate method
+        if (appPreferences == null)
+        {
+            Log.wtf(LOG_TAG, "Somehow the Tray App Preferences were null in the onResume call");
+            appPreferences = new AppPreferences(this);
+        }
+
         // Per the Android developer tutorials it is recommended to read the managed configuration in the onResume method
-        final Context applicationContext = getApplicationContext();
-        readSyncMonkeyProperties(applicationContext); // The properties and managed config need to be read before installing the rclone config file
-        readSyncMonkeyManagedConfiguration(applicationContext);
+        readSyncMonkeyProperties(this, appPreferences); // The properties and managed config need to be read before installing the rclone config file
+        readSyncMonkeyManagedConfiguration(this, appPreferences);
 
-        installRcloneConfigFile(applicationContext);
+        installRcloneConfigFile(this, appPreferences);
 
-        managedConfigurationListener = registerManagedConfigurationListener(applicationContext);
+        managedConfigurationListener = registerManagedConfigurationListener(this, appPreferences);
+
+        initializeSyncAdapterIfNecessary();
     }
 
     @Override
@@ -115,27 +135,90 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         if (managedConfigurationListener != null)
         {
-            getApplicationContext().unregisterReceiver(managedConfigurationListener);
+            try
+            {
+                getApplicationContext().unregisterReceiver(managedConfigurationListener);
+            } catch (Exception e)
+            {
+                Log.e(LOG_TAG, "Unable to unregister the Managed Configuration Listener when pausing the app");
+            }
             managedConfigurationListener = null;
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_sync_monkey, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        int id = item.getItemId();
+
+        if (id == R.id.action_settings)
+        {
+            startActivity(new Intent(SyncMonkeyMainActivity.this, SettingsActivity.class));
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     /**
      * Get the device ID, and place it in the shared preferences.  This is needed to represent the device specific directory on the remote upload server.
      */
+    @SuppressLint("ApplySharedPref")
     private void initializeDeviceId()
     {
-        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        final SharedPreferences.Editor edit = preferences.edit();
+        if (appPreferences.contains(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY))
+        {
+            Log.i(LOG_TAG, "The Device ID is already present in the Shared Preferences, skipping setting it to the App's default ID.");
+            return;
+        }
 
-        edit.putString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, getDeviceId());
-        edit.apply();
+        appPreferences.put(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, getDeviceId());
     }
 
     /**
-     * Initializes the sync adapter to run at a periodic interval.
+     * Reads all the preferences from the Default Shared Preferences and copies them over to the Tray Preferences IF they have not been copied before.  In
+     * other words, thye are only copied on on first run of the app.  The Tray Preferences are used instead of the Default Shared Preferences because the Tray
+     * Preferences allow for the sync adapter thread to get access to the latest user settings.  Each thread has their own copy of the Default Shared
+     * Preferences so if the user changes the settings via the UI, the sync adapter won't know about those changes
+     * until the app is stopped and started again.
+     *
+     * @since 0.0.8
      */
-    private void initializeSyncAdapter()
+    private synchronized void copyDefaultSharedPreferencesToTrayPreferences()
+    {
+        // Only apply the defaults on the first run of the app.
+        if (!appPreferences.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false))
+        {
+            PreferenceManager.getDefaultSharedPreferences(this).getAll().forEach((key, value) -> {
+
+                if (value instanceof Boolean)
+                {
+                    appPreferences.put(key, (Boolean) value);
+                } else if (value instanceof String)
+                {
+                    appPreferences.put(key, (String) value);
+                } else
+                {
+                    Log.wtf(LOG_TAG, "There was not a mapping for a user preference to set it in the Tray Preferences");
+                }
+            });
+
+            appPreferences.put(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, true);
+        }
+    }
+
+    /**
+     * Initializes the sync adapter to run at a periodic interval if the Auto Start preferences is set to true AND the periodic sync adapter is not already added.
+     */
+    private synchronized void initializeSyncAdapterIfNecessary()
     {
         Log.i(LOG_TAG, "Initializing the Sync Monkey Sync Adapter");
 
@@ -145,7 +228,21 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             return;
         }
 
-        ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
+        final boolean autoStartOnBootPreference = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
+
+        final Account syncAccount = getSyncAccount(this);
+        if (autoStartOnBootPreference)
+        {
+            // Per the ContentResolver#addPeriodicSync javadoc, if the is already another periodic sync scheduled with the account, authority, and extras, then
+            // a new periodic sync won't be added.  While the requestSync javadoc does not also say that, my guess is it is true as well.  Probably worth
+            // verifying at some point.
+            Log.i(LOG_TAG, "Adding the periodic sync adapter for Sync Monkey");
+            ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
+        } else
+        {
+            Log.i(LOG_TAG, "Removing the periodic sync adapter for Sync Monkey");
+            ContentResolver.removePeriodicSync(syncAccount, SyncMonkeyConstants.AUTHORITY, new Bundle());
+        }
     }
 
     /**
@@ -171,50 +268,51 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      *
      * @param context The application context
      */
-    public static Account createSyncAccount(Context context)
+    public static Account getSyncAccount(Context context)
     {
-        // Create the account type and default account
-        Account newAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
-        // Get an instance of the Android account manager
-        AccountManager accountManager = (AccountManager) context.getSystemService(ACCOUNT_SERVICE);
+        if (dummyAccount == null)
+        {
+            Log.i(LOG_TAG, "Creating a new Sync Account");
+            dummyAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
+            final AccountManager accountManager = (AccountManager) context.getSystemService(ACCOUNT_SERVICE);
 
-        /*
-         * Add the account and account type, no password or user data
-         * If successful, return the Account object, otherwise report an error.
-         */
-        if (accountManager != null && accountManager.addAccountExplicitly(newAccount, null, null))
-        {
             /*
-             * If you don't set android:syncable="true" in
-             * in your <provider> element in the manifest,
-             * then call context.setIsSyncable(account, AUTHORITY, 1)
-             * here.
+             * Add the account and account type, no password or user data
+             * If successful, return the Account object, otherwise report an error.
              */
-            return newAccount;
-        } else
-        {
-            /*
-             * The account exists or some other error occurred. Log this, report it,
-             * or handle it internally.
-             */
-            Log.v(LOG_TAG, "The account already exists, or the account manager could not be found");
+            if (accountManager != null && accountManager.addAccountExplicitly(dummyAccount, null, null))
+            {
+                /*
+                 * If you don't set android:syncable="true" in
+                 * in your <provider> element in the manifest,
+                 * then call context.setIsSyncable(account, AUTHORITY, 1)
+                 * here.
+                 */
+                return dummyAccount;
+            } else
+            {
+                /*
+                 * The account exists or some other error occurred. Log this, report it,
+                 * or handle it internally.
+                 */
+                Log.v(LOG_TAG, "The account already exists, or the account manager could not be found");
+            }
         }
 
-        return newAccount;
+        return dummyAccount;
     }
 
     /**
      * Reads the {@link SyncMonkeyConstants#SYNC_MONKEY_PROPERTIES_FILE} and loads the values into the App's Shared Preferences.
      */
-    public static void readSyncMonkeyProperties(Context context)
+    @SuppressLint("ApplySharedPref")
+    public static void readSyncMonkeyProperties(Context context, AppPreferences appPreferences)
     {
         try (final InputStream propertiesInputStream = context.getAssets().open(SyncMonkeyConstants.SYNC_MONKEY_PROPERTIES_FILE))
         {
             // First read in the values from the properties file
             Log.i(LOG_TAG, "Reading in the Sync Monkey properties file");
             final Properties properties = new Properties();
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-            final SharedPreferences.Editor sharedPreferenceEditor = preferences.edit();
 
             properties.load(propertiesInputStream);
             properties.entrySet().forEach(preferenceEntry -> {
@@ -224,21 +322,19 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 {
                     case SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY:
                     case SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY:
-                        sharedPreferenceEditor.putBoolean(key, Boolean.parseBoolean((String) preferenceEntry.getValue()));
+                    case SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY:
+                        appPreferences.put(key, Boolean.parseBoolean((String) preferenceEntry.getValue()));
                         break;
 
                     default:
-                        sharedPreferenceEditor.putString(key, (String) preferenceEntry.getValue());
+                        appPreferences.put(key, (String) preferenceEntry.getValue());
                 }
             });
 
-            // Finally, store the new values
-            sharedPreferenceEditor.apply();
-
-            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            /*if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
-                Log.i(LOG_TAG, "The Properties after reading in the properties file: " + preferences.getAll().toString()); // TODO delete me
-            }
+                Log.i(LOG_TAG, "The Properties after reading in the properties file: " + preferences.getAll().toString());
+            }*/
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Can't open the Sync Monkey properties file or write a preference to the shared preferences", e);
@@ -248,13 +344,11 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Reads the Sync Monkey Managed Configuration and loads the values into the App's Shared Preferences.
      */
-    public static void readSyncMonkeyManagedConfiguration(Context context)
+    @SuppressLint("ApplySharedPref")
+    public static void readSyncMonkeyManagedConfiguration(Context context, AppPreferences appPreferences)
     {
         try
         {
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-            final SharedPreferences.Editor sharedPreferenceEditor = preferences.edit();
-
             // Next, read any MDM set values.  Doing this last so that we can overwrite the values from the properties file
             Log.i(LOG_TAG, "Reading in any MDM configured properties");
             final RestrictionsManager restrictionsManager = (RestrictionsManager) context.getSystemService(Context.RESTRICTIONS_SERVICE);
@@ -266,21 +360,18 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                     final Object property = mdmProperties.get(key);
                     if (property instanceof String)
                     {
-                        sharedPreferenceEditor.putString(key, (String) property);
+                        appPreferences.put(key, (String) property);
                     } else if (property instanceof Boolean)
                     {
-                        sharedPreferenceEditor.putBoolean(key, (Boolean) property);
+                        appPreferences.put(key, (Boolean) property);
                     }
                 });
             }
 
-            // Finally, store the new values
-            sharedPreferenceEditor.apply();
-
-            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            /*if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
-                Log.i(LOG_TAG, "The Properties after reading in the managed config: " + preferences.getAll().toString()); // TODO delete me
-            }
+                Log.i(LOG_TAG, "The Properties after reading in the managed config: " + preferences.getAll().toString());
+            }*/
         } catch (Exception e)
         {
             Log.e(LOG_TAG, "Can't read the Sync Monkey managed configuration", e);
@@ -290,7 +381,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Register a listener so that if the Managed Config changes we will be notified of the new config.
      */
-    public static BroadcastReceiver registerManagedConfigurationListener(Context context)
+    public static BroadcastReceiver registerManagedConfigurationListener(Context context, AppPreferences appPreferences)
     {
         final IntentFilter restrictionsFilter = new IntentFilter(Intent.ACTION_APPLICATION_RESTRICTIONS_CHANGED);
 
@@ -299,8 +390,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             @Override
             public void onReceive(Context context, Intent intent)
             {
-                readSyncMonkeyManagedConfiguration(context);
-                installRcloneConfigFile(context);
+                readSyncMonkeyManagedConfiguration(context, appPreferences);
+                installRcloneConfigFile(context, appPreferences);
             }
         };
 
@@ -312,14 +403,12 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Checks to see if the SAS key is in the app properties.  If it is, then create the config file using the properties
      */
-    public static void installRcloneConfigFile(Context context)
+    public static void installRcloneConfigFile(Context context, AppPreferences appPreferences)
     {
-        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-
-        if (preferences.contains(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY))
+        if (appPreferences.contains(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY))
         {
             Log.i(LOG_TAG, "Found the Azure SAS URL Property, creating a new rclone.conf file");
-            createNewRcloneConfigFile(context, preferences);
+            createNewRcloneConfigFile(context, appPreferences);
         } else
         {
             Log.i(LOG_TAG, "Did not find the Azure SAS URL Property, copying the rclone.conf file that was packaged with the APK");
@@ -330,32 +419,29 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Creates a new {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} in the app's private storage area using the values from the shared preferences.
      */
-    private static void createNewRcloneConfigFile(Context context, SharedPreferences preferences)
+    private static synchronized void createNewRcloneConfigFile(Context context, AppPreferences appPreferences)
     {
         final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
 
         // The rclone.conf file does not exist, so copy it out of assets.
         try (final OutputStream privateAppRcloneConfigFileOutputStream = new FileOutputStream(rcloneConfigFile))
         {
-            final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
-            final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE_KEY, null);
-            final String sasUrl = preferences.getString(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY, null);
+            final String sasUrl = appPreferences.getString(SyncMonkeyConstants.PROPERTY_AZURE_SAS_URL_KEY, null);
 
-            if (configName == null || remoteType == null || sasUrl == null)
+            if (sasUrl == null)
             {
                 Log.e(LOG_TAG, "One of the values were null when trying to create a new rclone config file");
                 return;
             }
 
-            final String configNameWithBracketsEntry = "[" + configName + "]" + System.lineSeparator();
-            final String typeEntry = "type = " + remoteType + System.lineSeparator();
+            final String configNameWithBracketsEntry = "[" + SyncMonkeyConstants.AZURE_CONFIG_NAME + "]" + System.lineSeparator();
+            final String typeEntry = "type = " + SyncMonkeyConstants.AZURE_REMOTE_TYPE + System.lineSeparator();
             final String sasUrlEntry = "sas_url = " + sasUrl + System.lineSeparator();
 
             if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
                 Log.i(LOG_TAG, "configNameWithBracketsEntry=" + configNameWithBracketsEntry);
                 Log.i(LOG_TAG, "typeEntry=" + typeEntry);
-                Log.i(LOG_TAG, "sasUrlEntry=" + sasUrlEntry); // TODO Delete me
             }
 
             privateAppRcloneConfigFileOutputStream.write(configNameWithBracketsEntry.getBytes());
@@ -379,7 +465,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     /**
      * Copies the {@link SyncMonkeyConstants#RCLONE_CONFIG_FILE} from the assets directory to the app's private storage area.
      */
-    private static void copyRcloneConfigFile(Context context)
+    private static synchronized void copyRcloneConfigFile(Context context)
     {
         final File rcloneConfigFile = new File(context.getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE);
 

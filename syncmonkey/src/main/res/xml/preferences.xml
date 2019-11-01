@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        app:defaultValue="true"
+        app:icon="@drawable/ic_wifi"
+        app:key="wifiOnly"
+        app:summaryOff="@string/wifi_only_summary_off"
+        app:summaryOn="@string/wifi_only_summary_on"
+        app:title="@string/wifi_only_title" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="false"
+        app:icon="@drawable/ic_vpn"
+        app:key="vpnOnly"
+        app:summaryOff="@string/vpn_only_summary_off"
+        app:summaryOn="@string/vpn_only_summary_on"
+        app:title="@string/vpn_only_title" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="true"
+        app:icon="@drawable/ic_auto_start"
+        app:key="autoStartOnBoot"
+        app:summaryOff="@string/auto_start_summary_off"
+        app:summaryOn="@string/auto_start_summary_on"
+        app:title="@string/auto_start_on_boot_title" />
+
+    <PreferenceCategory
+        app:initialExpandedChildrenCount="0"
+        app:key="serverConfig"
+        app:title="@string/server_config_title">
+
+        <EditTextPreference
+            app:dialogMessage="@string/device_id_description"
+            app:key="deviceId"
+            app:title="@string/device_id_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="rapidlab-blob"
+            app:dialogMessage="@string/container_name_description"
+            app:key="containerName"
+            app:title="@string/container_name_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
+            app:dialogMessage="@string/sync_directories_summary"
+            app:key="localSyncDirectories"
+            app:title="@string/sync_directories_title"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

@@ -4,20 +4,21 @@ import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.SyncRequest;
 import android.content.SyncResult;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
-import android.preference.PreferenceManager;
 import android.util.Log;
 
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyConstants;
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyMainActivity;
 import com.chesapeaketechnology.syncmonkey.fileupload.Items.RemoteItem;
+
+import net.grandcentrix.tray.AppPreferences;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -33,6 +34,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
     private final Rclone rclone;
     private final String dataDirectoryPath;
+    private AppPreferences appPreferences;
 
     /**
      * Set up the sync adapter
@@ -51,6 +53,8 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     {
         super(context, autoInitialize, allowParallelSyncs);
 
+        appPreferences = new AppPreferences(context);
+
         rclone = new Rclone(context);
         dataDirectoryPath = Environment.getExternalStorageDirectory().getPath() + "/";
     }
@@ -67,10 +71,22 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
         {
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
 
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-            final boolean transmitOnlyOnVPN = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
+            final boolean transmitOnlyOnVpn = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
+            final boolean transmitOnlyOnWiFi = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY, true);
 
-            if (transmitOnlyOnVPN)
+            if (Log.isLoggable(LOG_TAG, Log.INFO))
+            {
+                Log.i(LOG_TAG, "Wi-Fi Only Upload Preference: " + transmitOnlyOnWiFi);
+                Log.i(LOG_TAG, "VPN Only Upload Preference: " + transmitOnlyOnVpn);
+            }
+
+            if (transmitOnlyOnWiFi && !isWiFiConnected())
+            {
+                Log.i(LOG_TAG, "Skipping upload because wifi is not connected and the wifiOnly property is true");
+                return;
+            }
+
+            if (transmitOnlyOnVpn)
             {
                 if (isVpnEnabled()) uploadFile();
             } else
@@ -81,6 +97,37 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
         {
             Log.e(LOG_TAG, "Caught an exception when trying to perform a sync", e);
         }
+    }
+
+    /**
+     * Check if the Android device is currently connected to a Wi-Fi network.
+     *
+     * @return If the device is connected to a Wi-Fi Network return true.
+     */
+    private boolean isWiFiConnected()
+    {
+        final ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) return false;
+
+        boolean wifiConnected = false;
+
+        for (Network network : connectivityManager.getAllNetworks())
+        {
+            NetworkInfo networkInfo = connectivityManager.getNetworkInfo(network);
+            if (networkInfo == null) continue;
+
+            if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI)
+            {
+                wifiConnected |= networkInfo.isConnected();
+            }
+            if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE)
+            {
+                wifiConnected |= networkInfo.isConnected();
+            }
+        }
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Wifi connected: " + wifiConnected);
+
+        return wifiConnected;
     }
 
     /**
@@ -97,7 +144,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
         boolean vpnEnabled = false;
 
-        Log.i(LOG_TAG, "Network count: " + networks.length);
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Network count: " + networks.length);
         for (int i = 0; i < networks.length; i++)
         {
             final NetworkCapabilities caps = connectivityManager.getNetworkCapabilities(networks[i]);
@@ -123,7 +170,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
      */
     public static SyncRequest generatePeriodicSyncRequest(Context context)
     {
-        final Account dummyAccount = SyncMonkeyMainActivity.createSyncAccount(context);
+        final Account dummyAccount = SyncMonkeyMainActivity.getSyncAccount(context);
 
         return new SyncRequest.Builder()
                 .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)
@@ -137,43 +184,41 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
      */
     private void uploadFile()
     {
-        final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-
-        final String configName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONFIG_NAME_KEY, null);
-        final String containerName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
-        final String remoteType = preferences.getString(SyncMonkeyConstants.PROPERTY_REMOTE_TYPE_KEY, null);
-        final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
-        final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
-
-        if (configName == null || containerName == null || remoteType == null || localSyncDirectories == null)
+        synchronized (SyncMonkeyMainActivity.class)
         {
-            Log.e(LOG_TAG, "Could not upload any files because the remoteName, remoteType, or localSyncDirectories was null");
-            return;
-        }
+            final String containerName = appPreferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
+            final String localSyncDirectories = appPreferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
+            final String deviceId = appPreferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
 
-        final RemoteItem remote = new RemoteItem(configName + SyncMonkeyConstants.COLON_SEPARATOR + containerName, remoteType);
-
-        for (String relativeSyncDirectory : localSyncDirectories.split(SyncMonkeyConstants.COLON_SEPARATOR))
-        {
-            final String localSyncDirectory = dataDirectoryPath + relativeSyncDirectory;
-
-            if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
-
-            Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, localSyncDirectory);
-
-            if (currentProcess != null)
+            if (containerName == null || localSyncDirectories == null)
             {
-                try
-                {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream()));
-                    String line;
-                    //String notificationContent = "";
-                    //String[] notificationBigText = new String[5];
-                    while ((line = reader.readLine()) != null)
-                    {
-                        Log.d(LOG_TAG, line);
+                Log.e(LOG_TAG, "Could not upload any files because the containerName or localSyncDirectories was null");
+                return;
+            }
 
-                        // This code might be useful to show toasts with specific transfer information
+            final RemoteItem remote = new RemoteItem(SyncMonkeyConstants.AZURE_CONFIG_NAME + SyncMonkeyConstants.COLON_SEPARATOR + containerName, SyncMonkeyConstants.AZURE_REMOTE_TYPE);
+
+            for (String relativeSyncDirectory : localSyncDirectories.split(SyncMonkeyConstants.COLON_SEPARATOR))
+            {
+                final String localSyncDirectory = dataDirectoryPath + relativeSyncDirectory;
+
+                if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
+
+                Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, localSyncDirectory);
+
+                if (currentProcess != null)
+                {
+                    try
+                    {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream()));
+                        String line;
+                        //String notificationContent = "";
+                        //String[] notificationBigText = new String[5];
+                        while ((line = reader.readLine()) != null)
+                        {
+                            Log.d(LOG_TAG, line);
+
+                            // This code might be useful to show toasts with specific transfer information
                         /*if (line.startsWith("Transferred:") && !line.matches("Transferred:\\s+\\d+\\s+/\\s+\\d+,\\s+\\d+%$"))
                         {
                             String s = line.substring(12).trim();
@@ -196,23 +241,24 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                         {
                             log2File.log(line);
                         }*/
+                        }
+                    } catch (IOException e)
+                    {
+                        Log.e(LOG_TAG, "Caught an exception when trying to read an error from the upload process", e);
                     }
-                } catch (IOException e)
-                {
-                    Log.e(LOG_TAG, "Caught an exception when trying to read an error from the upload process", e);
+
+                    try
+                    {
+                        currentProcess.waitFor();
+                    } catch (InterruptedException e)
+                    {
+                        Log.e(LOG_TAG, "Caught an exception when waiting for the rclone upload process to finish", e);
+                    }
                 }
 
-                try
-                {
-                    currentProcess.waitFor();
-                } catch (InterruptedException e)
-                {
-                    Log.e(LOG_TAG, "Caught an exception when waiting for the rclone upload process to finish", e);
-                }
+                boolean result = currentProcess != null && currentProcess.exitValue() == 0;
+                Log.i(LOG_TAG, "rclone upload result=" + result);
             }
-
-            boolean result = currentProcess != null && currentProcess.exitValue() == 0;
-            Log.i(LOG_TAG, "rclone upload result=" + result);
         }
     }
 }

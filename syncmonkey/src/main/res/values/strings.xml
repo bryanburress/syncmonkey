@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">Sync Monkey</string>
 
+    <string name="settings">Settings</string>
+
     <string name="pref_key_logs">pref_key_logs</string>
     <string name="hash_error">ERROR</string>
     <string name="hash_unsupported">UNSUPPORTED</string>
@@ -10,28 +12,48 @@
         Use the Sync Button below to force a sync.</string>
     <string name="sync_button_text">Sync Now</string>
 
-    <string name="config_name_title">configName</string>
+    <string name="config_name_title">Config Name</string>
     <string name="config_name_description">The name of the configuration that will be placed in the rclone.conf file</string>
 
-    <string name="container_name_title">containerName</string>
+    <string name="container_name_title">Container Name</string>
     <string name="container_name_description">The name of the Azure Blob Storage container where the files will be uploaded to</string>
 
-    <string name="sas_url_title">sas_url</string>
+    <string name="sas_url_title">Azure SAS URL</string>
     <string name="sas_url_description">SAS URL for connecting to the Azure Blob Storage</string>
 
-    <string name="remote_type_title">remoteType</string>
+    <string name="remote_type_title">Remote Type</string>
     <string name="remote_type_description">The type of storage that the files will be uploaded to</string>
 
-    <string name="local_sync_directories_title">localSyncDirectories</string>
+    <string name="local_sync_directories_title">Local Sync Directories</string>
     <string name="local_sync_directories_description">A colon separated list of relative directories to upload (e.g. Download/NetworkSurveyData:Download/NinjaGPS )</string>
 
-    <string name="device_id_title">deviceId</string>
+    <string name="device_id_title">Device ID</string>
     <string name="device_id_description">The device ID, which will be used to create a folder to group all uploaded files together</string>
 
-    <string name="auto_start_on_boot_title">autoStartOnBoot</string>
+    <string name="auto_start_on_boot_title">Auto Start On Boot</string>
     <string name="auto_start_on_boot_description">If true, then the SyncMonkey app will run in the background on phone boot</string>
 
-    <string name="vpn_only_title">vpnOnly</string>
-    <string name="vpn_only_description">If true, then files will only be uploaded when a VPN is active</string>
+    <string name="vpn_only_title">VPN Only Upload</string>
+    <string name="vpn_only_description">Controls whether files will only be uploaded when a VPN connection is active</string>
+
+    <string name="wifi_only_title">Wi-Fi Only Upload</string>
+    <string name="wifi_only_description">Controls whether files will only be uploaded when a Wi-Fi connection is active</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- User Preference Constants -->
+    <string name="wifi_only_summary_on">Upload files only over Wi-Fi</string>
+    <string name="wifi_only_summary_off">Upload files over Wi-Fi and Cellular</string>
+
+    <string name="vpn_only_summary_on">Upload files only when a VPN connection is active</string>
+    <string name="vpn_only_summary_off">Upload files regardless of a active VPN connection</string>
+
+    <string name="auto_start_summary_on">The Sync Monkey app will be started in the background when the phone is rebooted</string>
+    <string name="auto_start_summary_off">The Sync Monkey app will not run in the background, manual upload is required to sync files</string>
+
+    <!-- Server Config User Preference Constants -->
+    <string name="server_config_title">Server Config</string>
+    <string name="sync_directories_title">Sync Directories</string>
+    <string name="sync_directories_summary">The Directories to sync to the server (entries separated by a colon)</string>
+    <string name="custom_sas_url_summary_on">The custom URL below will be used instead of the built in config file</string>
 
 </resources>
