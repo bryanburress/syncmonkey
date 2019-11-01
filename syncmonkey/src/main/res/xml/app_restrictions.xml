@@ -15,6 +15,7 @@
         android:title="@string/container_name_title" />
 
     <restriction
+        android:defaultValue=""
         android:description="@string/sas_url_description"
         android:key="sas_url"
         android:restrictionType="hidden"
