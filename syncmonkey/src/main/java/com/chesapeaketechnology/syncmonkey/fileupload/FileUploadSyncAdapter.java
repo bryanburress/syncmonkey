@@ -4,7 +4,6 @@ import android.accounts.Account;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.SyncRequest;
 import android.content.SyncResult;
 import android.net.ConnectivityManager;
@@ -15,11 +14,11 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 
-import android.preference.PreferenceManager;
-
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyConstants;
 import com.chesapeaketechnology.syncmonkey.SyncMonkeyMainActivity;
 import com.chesapeaketechnology.syncmonkey.fileupload.Items.RemoteItem;
+
+import net.grandcentrix.tray.AppPreferences;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,6 +34,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
     private final Rclone rclone;
     private final String dataDirectoryPath;
+    private AppPreferences appPreferences;
 
     /**
      * Set up the sync adapter
@@ -53,6 +53,8 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     {
         super(context, autoInitialize, allowParallelSyncs);
 
+        appPreferences = new AppPreferences(context);
+
         rclone = new Rclone(context);
         dataDirectoryPath = Environment.getExternalStorageDirectory().getPath() + "/";
     }
@@ -69,9 +71,8 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
         {
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
 
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-            final boolean transmitOnlyOnVpn = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
-            final boolean transmitOnlyOnWiFi = preferences.getBoolean(SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY, true);
+            final boolean transmitOnlyOnVpn = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
+            final boolean transmitOnlyOnWiFi = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY, true);
 
             if (Log.isLoggable(LOG_TAG, Log.INFO))
             {
@@ -185,11 +186,9 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     {
         synchronized (SyncMonkeyMainActivity.class)
         {
-            final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-
-            final String containerName = preferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
-            final String localSyncDirectories = preferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
-            final String deviceId = preferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
+            final String containerName = appPreferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
+            final String localSyncDirectories = appPreferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
+            final String deviceId = appPreferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
 
             if (containerName == null || localSyncDirectories == null)
             {
