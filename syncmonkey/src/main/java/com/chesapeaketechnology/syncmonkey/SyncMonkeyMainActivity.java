@@ -252,15 +252,27 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      */
     private void runSyncAdapter()
     {
-        // Pass the settings flags by inserting them in a bundle
-        Bundle settingsBundle = new Bundle();
-        settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-        settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-        /*
-         * Request the sync for the default account, authority, and
-         * manual sync settings
-         */
-        ContentResolver.requestSync(dummyAccount, SyncMonkeyConstants.AUTHORITY, settingsBundle);
+        if (hasRcloneConfigFile())
+        {
+            Bundle settingsBundle = new Bundle();
+            settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+            settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+
+            ContentResolver.requestSync(dummyAccount, SyncMonkeyConstants.AUTHORITY, settingsBundle);
+        } else
+        {
+            final String noSasUrlMessage = "No Azure SAS URL found, enter it in the User Settings";
+            Toast.makeText(getApplicationContext(), noSasUrlMessage, Toast.LENGTH_LONG).show();
+            Log.e(LOG_TAG, noSasUrlMessage);
+        }
+    }
+
+    /**
+     * @return True if the rclone configuration file is present in the Apps private storage area, false otherwise.
+     */
+    private boolean hasRcloneConfigFile()
+    {
+        return new File(getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE).exists();
     }
 
     /**

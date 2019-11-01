@@ -44,6 +44,12 @@
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
+            app:dialogMessage="@string/sas_url_description"
+            app:key="sas_url"
+            app:title="@string/sas_url_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
             app:defaultValue="Download/NetworkSurveyData:Download/NinjaGPS"
             app:dialogMessage="@string/sync_directories_summary"
             app:key="localSyncDirectories"
