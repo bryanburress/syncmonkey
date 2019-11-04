@@ -7,10 +7,12 @@
     tools:context=".SyncMonkeyMainActivity">
 
     <TextView
+        android:id="@+id/sync_button_description"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
-        android:text="@string/sync_button_description" />
+        android:text="@string/sync_button_auto_upload_description"
+        android:textSize="18sp" />
 
     <Button
         android:id="@+id/button"
@@ -18,6 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="5dp"
         android:text="@string/sync_button_text"
+        android:textSize="18sp"
         tools:layout_editor_absoluteX="167dp"
         tools:layout_editor_absoluteY="252dp" />
 

@@ -18,6 +18,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -116,6 +117,8 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             Log.wtf(LOG_TAG, "Somehow the Tray App Preferences were null in the onResume call");
             appPreferences = new AppPreferences(this);
         }
+
+        updateSyncButtonDescription();
 
         // Per the Android developer tutorials it is recommended to read the managed configuration in the onResume method
         readSyncMonkeyProperties(this, appPreferences); // The properties and managed config need to be read before installing the rclone config file
@@ -273,6 +276,17 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     private boolean hasRcloneConfigFile()
     {
         return new File(getFilesDir(), SyncMonkeyConstants.RCLONE_CONFIG_FILE).exists();
+    }
+
+    /**
+     * Update the Sync Button Description based on the current user preference.
+     */
+    private void updateSyncButtonDescription()
+    {
+        final boolean autoStartPreference = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, false);
+        final String description = getString(autoStartPreference ? R.string.sync_button_auto_upload_description : R.string.sync_button_manual_upload_description);
+
+        ((TextView) findViewById(R.id.sync_button_description)).setText(description);
     }
 
     /**

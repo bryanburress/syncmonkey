@@ -8,8 +8,10 @@
     <string name="hash_unsupported">UNSUPPORTED</string>
     <string name="hash_copied_confirmation">Hash copied to clipboard</string>
 
-    <string name="sync_button_description">All files will be automatically synced at a scheduled interval.
+    <string name="sync_button_auto_upload_description">All files will be automatically synced at a scheduled interval.
         Use the Sync Button below to force a sync.</string>
+    <string name="sync_button_manual_upload_description">Auto upload is disabled.  Syncing will only
+        occur using the Sync Button below.</string>
     <string name="sync_button_text">Sync Now</string>
 
     <string name="config_name_title">Config Name</string>
@@ -47,7 +49,7 @@
     <string name="vpn_only_summary_on">Upload files only when a VPN connection is active</string>
     <string name="vpn_only_summary_off">Upload files regardless of a active VPN connection</string>
 
-    <string name="auto_start_summary_on">The Sync Monkey app will be started in the background when the phone is rebooted</string>
+    <string name="auto_start_summary_on">The Sync Monkey app will run in the background, files will be synced automatically</string>
     <string name="auto_start_summary_off">The Sync Monkey app will not run in the background, manual upload is required to sync files</string>
 
     <!-- Server Config User Preference Constants -->
