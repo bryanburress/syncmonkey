@@ -1,8 +1,10 @@
 package com.chesapeaketechnology.syncmonkey.fileupload;
 
 import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SyncRequest;
 import android.content.SyncResult;
@@ -69,6 +71,10 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     {
         try
         {
+            final boolean autoSync = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_SYNC_KEY, true);
+            final boolean expedited = extras.getBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, false);
+            if (!autoSync && !expedited) return;
+
             Log.i(LOG_TAG, "Running the SyncMonkey Sync Adapter");
 
             final boolean transmitOnlyOnVpn = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY, true);
@@ -163,20 +169,69 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     }
 
     /**
-     * Generates a {@link SyncRequest} that can be used to schedule sync updates.
+     * Generates and submits a {@link SyncRequest} that can be used to schedule periodic sync updates.
      *
      * @param context The context to use when creating the Sync {@link Account}.
-     * @return A {@link SyncRequest} that can be submitted to schedule a periodic sync.
      */
-    public static SyncRequest generatePeriodicSyncRequest(Context context)
+    public static void addPeriodicSync(Context context)
     {
-        final Account dummyAccount = SyncMonkeyMainActivity.getSyncAccount(context);
+        Log.i(LOG_TAG, "Adding the periodic sync adapter for Sync Monkey");
 
-        return new SyncRequest.Builder()
+        final Account dummyAccount = getSyncAccount(context);
+
+        final SyncRequest syncRequest = new SyncRequest.Builder()
+                .syncPeriodic(SyncMonkeyConstants.SECONDS_IN_HOUR, (SyncMonkeyConstants.SECONDS_IN_HOUR) / 2)
                 .setSyncAdapter(dummyAccount, SyncMonkeyConstants.AUTHORITY)
-                .syncPeriodic(2 * SyncMonkeyConstants.SECONDS_IN_HOUR, 2 * SyncMonkeyConstants.SECONDS_IN_HOUR)
                 .setExtras(new Bundle()) // I think there is a bug in Android that makes setting this empty Bundle a requirement
                 .build();
+
+        ContentResolver.requestSync(syncRequest);
+    }
+
+    /**
+     * Run the sync adapter immediately.
+     *
+     * @param context The context to use when creating the Sync {@link Account}.
+     */
+    public static void runSyncAdapterNow(Context context)
+    {
+        Log.i(LOG_TAG, "Running the sync adapter for Sync Monkey immediately");
+
+        Bundle settingsBundle = new Bundle();
+        settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+        settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+
+        ContentResolver.requestSync(getSyncAccount(context), SyncMonkeyConstants.AUTHORITY, settingsBundle);
+    }
+
+    /**
+     * Create a new dummy account for the sync adapter.
+     *
+     * @param context The application context
+     */
+    private static Account getSyncAccount(Context context)
+    {
+        Log.i(LOG_TAG, "Creating a new Sync Account");
+        final AccountManager accountManager = (AccountManager) context.getSystemService(Context.ACCOUNT_SERVICE);
+        final Account dummyAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
+
+        if (accountManager == null)
+        {
+            Log.wtf(LOG_TAG, "Somehow the account manager is null.  Can't create the account needed for the sync adapter");
+            return null;
+        }
+
+        // If the password doesn't exist, the account doesn't exist
+        if (accountManager.getPassword(dummyAccount) == null)
+        {
+            if (!accountManager.addAccountExplicitly(dummyAccount, "", null))
+            {
+                Log.e(LOG_TAG, "getSyncAccount Failed to create a new account");
+                return null;
+            }
+        }
+
+        return dummyAccount;
     }
 
     /**

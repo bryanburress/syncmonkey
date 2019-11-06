@@ -1,11 +1,8 @@
 package com.chesapeaketechnology.syncmonkey;
 
 import android.Manifest;
-import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -46,8 +43,6 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
     private static final int ACCESS_PERMISSION_REQUEST_ID = 1;
 
-    private static Account dummyAccount;
-
     private AppPreferences appPreferences;
     private BroadcastReceiver managedConfigurationListener;
 
@@ -64,9 +59,6 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         setContentView(R.layout.activity_main);
         findViewById(R.id.button).setOnClickListener(listener -> runSyncAdapter());
-
-        // Create the dummy account
-        dummyAccount = getSyncAccount(this);
 
         // Install the defaults specified in the XML preferences file, this is only done the first time the app is opened
         androidx.preference.PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
@@ -231,21 +223,11 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             return;
         }
 
-        final boolean autoStartOnBootPreference = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
+        final boolean autoSync = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_SYNC_KEY, true);
 
-        final Account syncAccount = getSyncAccount(this);
-        if (autoStartOnBootPreference)
-        {
-            // Per the ContentResolver#addPeriodicSync javadoc, if the is already another periodic sync scheduled with the account, authority, and extras, then
-            // a new periodic sync won't be added.  While the requestSync javadoc does not also say that, my guess is it is true as well.  Probably worth
-            // verifying at some point.
-            Log.i(LOG_TAG, "Adding the periodic sync adapter for Sync Monkey");
-            ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(this));
-        } else
-        {
-            Log.i(LOG_TAG, "Removing the periodic sync adapter for Sync Monkey");
-            ContentResolver.removePeriodicSync(syncAccount, SyncMonkeyConstants.AUTHORITY, new Bundle());
-        }
+        // Per the ContentResolver#addPeriodicSync javadoc, if the is already another periodic sync scheduled with the account, authority, and extras, then
+        // a new periodic sync won't be added.
+        if (autoSync) FileUploadSyncAdapter.addPeriodicSync(getApplicationContext());
     }
 
     /**
@@ -257,11 +239,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
     {
         if (hasRcloneConfigFile())
         {
-            Bundle settingsBundle = new Bundle();
-            settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
-            settingsBundle.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
-
-            ContentResolver.requestSync(dummyAccount, SyncMonkeyConstants.AUTHORITY, settingsBundle);
+            FileUploadSyncAdapter.runSyncAdapterNow(getApplicationContext());
         } else
         {
             final String noSasUrlMessage = "No Azure SAS URL found, enter it in the User Settings";
@@ -283,49 +261,10 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
      */
     private void updateSyncButtonDescription()
     {
-        final boolean autoStartPreference = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, false);
-        final String description = getString(autoStartPreference ? R.string.sync_button_auto_upload_description : R.string.sync_button_manual_upload_description);
+        final boolean autoSync = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_SYNC_KEY, false);
+        final String description = getString(autoSync ? R.string.sync_button_auto_upload_description : R.string.sync_button_manual_upload_description);
 
         ((TextView) findViewById(R.id.sync_button_description)).setText(description);
-    }
-
-    /**
-     * Create a new dummy account for the sync adapter.
-     *
-     * @param context The application context
-     */
-    public static Account getSyncAccount(Context context)
-    {
-        if (dummyAccount == null)
-        {
-            Log.i(LOG_TAG, "Creating a new Sync Account");
-            dummyAccount = new Account(SyncMonkeyConstants.ACCOUNT, SyncMonkeyConstants.ACCOUNT_TYPE);
-            final AccountManager accountManager = (AccountManager) context.getSystemService(ACCOUNT_SERVICE);
-
-            /*
-             * Add the account and account type, no password or user data
-             * If successful, return the Account object, otherwise report an error.
-             */
-            if (accountManager != null && accountManager.addAccountExplicitly(dummyAccount, null, null))
-            {
-                /*
-                 * If you don't set android:syncable="true" in
-                 * in your <provider> element in the manifest,
-                 * then call context.setIsSyncable(account, AUTHORITY, 1)
-                 * here.
-                 */
-                return dummyAccount;
-            } else
-            {
-                /*
-                 * The account exists or some other error occurred. Log this, report it,
-                 * or handle it internally.
-                 */
-                Log.v(LOG_TAG, "The account already exists, or the account manager could not be found");
-            }
-        }
-
-        return dummyAccount;
     }
 
     /**
@@ -346,7 +285,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 final String key = (String) preferenceEntry.getKey();
                 switch (key)
                 {
-                    case SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY:
+                    case SyncMonkeyConstants.PROPERTY_AUTO_SYNC_KEY:
                     case SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY:
                     case SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY:
                         appPreferences.put(key, Boolean.parseBoolean((String) preferenceEntry.getValue()));

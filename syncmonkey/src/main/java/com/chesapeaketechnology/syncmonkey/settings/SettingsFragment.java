@@ -39,7 +39,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         // Whenever the share preferences are updated, copy them over to the Tray Preferences
         switch (key)
         {
-            case SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY:
+            case SyncMonkeyConstants.PROPERTY_AUTO_SYNC_KEY:
             case SyncMonkeyConstants.PROPERTY_VPN_ONLY_KEY:
             case SyncMonkeyConstants.PROPERTY_WIFI_ONLY_KEY:
                 appPreferences.put(key, sharedPreferences.getBoolean(key, true));

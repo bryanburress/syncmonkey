@@ -70,7 +70,7 @@
 
         <provider
             android:name=".fileupload.StubProvider"
-            android:authorities="com.chesapeaketechnology.sycnmonkey.provider"
+            android:authorities="@string/content_authority"
             android:exported="false"
             android:syncable="true" />
 

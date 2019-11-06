@@ -20,10 +20,10 @@
     <SwitchPreferenceCompat
         app:defaultValue="true"
         app:icon="@drawable/ic_auto_start"
-        app:key="autoStartOnBoot"
-        app:summaryOff="@string/auto_start_summary_off"
-        app:summaryOn="@string/auto_start_summary_on"
-        app:title="@string/auto_start_on_boot_title" />
+        app:key="autoSync"
+        app:summaryOff="@string/auto_sync_summary_off"
+        app:summaryOn="@string/auto_sync_summary_on"
+        app:title="@string/auto_sync_title" />
 
     <PreferenceCategory
         app:initialExpandedChildrenCount="0"

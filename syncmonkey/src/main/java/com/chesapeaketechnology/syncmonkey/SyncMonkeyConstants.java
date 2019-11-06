@@ -18,7 +18,7 @@ public class SyncMonkeyConstants
     // The authority for the sync adapter's content provider
     public static final String AUTHORITY = "com.chesapeaketechnology.sycnmonkey.provider";
     // An account type, in the form of a domain name
-    public static final String ACCOUNT_TYPE = "rfmonkey.com";
+    public static final String ACCOUNT_TYPE = "com.rfmonkey";
     // The account name
     public static final String ACCOUNT = "dummyaccount";
 
@@ -33,7 +33,7 @@ public class SyncMonkeyConstants
     public static final String PROPERTY_AZURE_SAS_URL_KEY = "sas_url";
     public static final String PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY = "localSyncDirectories";
     public static final String PROPERTY_DEVICE_ID_KEY = "deviceId";
-    public static final String PROPERTY_AUTO_START_ON_BOOT_KEY = "autoStartOnBoot";
+    public static final String PROPERTY_AUTO_SYNC_KEY = "autoSync";
     public static final String PROPERTY_VPN_ONLY_KEY = "vpnOnly";
     public static final String PROPERTY_WIFI_ONLY_KEY = "wifiOnly";
 

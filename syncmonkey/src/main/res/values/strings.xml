@@ -8,14 +8,14 @@
     <string name="hash_unsupported">UNSUPPORTED</string>
     <string name="hash_copied_confirmation">Hash copied to clipboard</string>
 
+    <string name="sync_account_type">com.rfmonkey</string>
+    <string name="content_authority">com.chesapeaketechnology.sycnmonkey.provider</string>
+
     <string name="sync_button_auto_upload_description">All files will be automatically synced at a scheduled interval.
         Use the Sync Button below to force a sync.</string>
     <string name="sync_button_manual_upload_description">Auto upload is disabled.  Syncing will only
         occur using the Sync Button below.</string>
     <string name="sync_button_text">Sync Now</string>
-
-    <string name="config_name_title">Config Name</string>
-    <string name="config_name_description">The name of the configuration that will be placed in the rclone.conf file</string>
 
     <string name="container_name_title">Container Name</string>
     <string name="container_name_description">The name of the Azure Blob Storage container where the files will be uploaded to</string>
@@ -23,17 +23,14 @@
     <string name="sas_url_title">Azure SAS URL</string>
     <string name="sas_url_description">SAS URL for connecting to the Azure Blob Storage</string>
 
-    <string name="remote_type_title">Remote Type</string>
-    <string name="remote_type_description">The type of storage that the files will be uploaded to</string>
-
     <string name="local_sync_directories_title">Local Sync Directories</string>
     <string name="local_sync_directories_description">A colon separated list of relative directories to upload (e.g. Download/NetworkSurveyData:Download/GPSMonkey )</string>
 
     <string name="device_id_title">Device ID</string>
     <string name="device_id_description">The device ID, which will be used to create a folder to group all uploaded files together</string>
 
-    <string name="auto_start_on_boot_title">Auto Start On Boot</string>
-    <string name="auto_start_on_boot_description">If true, then the SyncMonkey app will run in the background on phone boot</string>
+    <string name="auto_sync_title">Auto Sync</string>
+    <string name="auto_sync_description">If true, then the SyncMonkey app will run in the background and sync periodically</string>
 
     <string name="vpn_only_title">VPN Only Upload</string>
     <string name="vpn_only_description">Controls whether files will only be uploaded when a VPN connection is active</string>
@@ -49,8 +46,8 @@
     <string name="vpn_only_summary_on">Upload files only when a VPN connection is active</string>
     <string name="vpn_only_summary_off">Upload files regardless of a active VPN connection</string>
 
-    <string name="auto_start_summary_on">The Sync Monkey app will run in the background, files will be synced automatically</string>
-    <string name="auto_start_summary_off">The Sync Monkey app will not run in the background, manual upload is required to sync files</string>
+    <string name="auto_sync_summary_on">Files will be synced automatically</string>
+    <string name="auto_sync_summary_off">Manual upload is required to sync files</string>
 
     <!-- Server Config User Preference Constants -->
     <string name="server_config_title">Server Config</string>

@@ -1,7 +1,6 @@
 package com.chesapeaketechnology.syncmonkey;
 
 import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
@@ -25,11 +24,11 @@ public class StartSyncMonkeyAtBootReceiver extends BroadcastReceiver
         if (!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
 
         final AppPreferences appPreferences = new AppPreferences(context);
-        final boolean autoStartOnBootPreference = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_START_ON_BOOT_KEY, true);
+        final boolean autoSyncPreference = appPreferences.getBoolean(SyncMonkeyConstants.PROPERTY_AUTO_SYNC_KEY, true);
 
-        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Auto Start at Boot Preference: " + autoStartOnBootPreference);
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Auto Sync Preference: " + autoSyncPreference);
 
-        if (autoStartOnBootPreference)
+        if (autoSyncPreference)
         {
             Log.i(LOG_TAG, "Auto starting the Sync Monkey Sync Adapter");
             final Context applicationContext = context.getApplicationContext();
@@ -38,7 +37,7 @@ public class StartSyncMonkeyAtBootReceiver extends BroadcastReceiver
             SyncMonkeyMainActivity.readSyncMonkeyManagedConfiguration(applicationContext, appPreferences);
             SyncMonkeyMainActivity.installRcloneConfigFile(applicationContext, appPreferences);
 
-            ContentResolver.requestSync(FileUploadSyncAdapter.generatePeriodicSyncRequest(applicationContext));
+            FileUploadSyncAdapter.addPeriodicSync(applicationContext);
 
             // Register a listener for Managed Configuration changes.
             SyncMonkeyMainActivity.registerManagedConfigurationListener(applicationContext, appPreferences);
