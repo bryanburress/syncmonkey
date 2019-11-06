@@ -186,6 +186,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                 .build();
 
         ContentResolver.requestSync(syncRequest);
+        ContentResolver.setSyncAutomatically(dummyAccount, SyncMonkeyConstants.AUTHORITY, true);
     }
 
     /**
