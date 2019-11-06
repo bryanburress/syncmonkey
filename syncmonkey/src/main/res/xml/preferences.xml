@@ -37,7 +37,7 @@
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
-            app:defaultValue="rapidlab-blob"
+            app:defaultValue="azuretest-blob"
             app:dialogMessage="@string/container_name_description"
             app:key="containerName"
             app:title="@string/container_name_title"
