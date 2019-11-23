@@ -44,7 +44,7 @@
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
-            app:dialogMessage="@string/sas_url_description"
+            app:dialogMessage="@string/sas_url_preference_description"
             app:key="sas_url"
             app:title="@string/sas_url_title"
             app:useSimpleSummaryProvider="true" />

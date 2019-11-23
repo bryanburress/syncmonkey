@@ -54,5 +54,7 @@
     <string name="sync_directories_title">Sync Directories</string>
     <string name="sync_directories_summary">The Directories to sync to the server (entries separated by a colon)</string>
     <string name="custom_sas_url_summary_on">The custom URL below will be used instead of the built in config file</string>
+    <string name="sas_url_preference_description">SAS URL for connecting to the Azure Blob Storage. This value is not needed if it is set via a config file or managed by the device administrator (MDN).</string>
+
 
 </resources>

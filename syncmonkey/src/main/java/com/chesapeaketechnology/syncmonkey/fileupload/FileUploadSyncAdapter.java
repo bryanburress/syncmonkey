@@ -124,11 +124,8 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
             if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI)
             {
-                wifiConnected |= networkInfo.isConnected();
-            }
-            if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE)
-            {
-                wifiConnected |= networkInfo.isConnected();
+                wifiConnected = networkInfo.isConnected();
+                break;
             }
         }
         if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Wifi connected: " + wifiConnected);
