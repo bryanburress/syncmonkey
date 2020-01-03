@@ -175,12 +175,17 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             return;
         }
 
-        appPreferences.put(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, getDeviceId());
+        final String deviceId = getDeviceId();
+        appPreferences.put(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, deviceId);
+        PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .edit()
+                .putString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, deviceId)
+                .apply();
     }
 
     /**
      * Reads all the preferences from the Default Shared Preferences and copies them over to the Tray Preferences IF they have not been copied before.  In
-     * other words, thye are only copied on on first run of the app.  The Tray Preferences are used instead of the Default Shared Preferences because the Tray
+     * other words, they are only copied on on first run of the app.  The Tray Preferences are used instead of the Default Shared Preferences because the Tray
      * Preferences allow for the sync adapter thread to get access to the latest user settings.  Each thread has their own copy of the Default Shared
      * Preferences so if the user changes the settings via the UI, the sync adapter won't know about those changes
      * until the app is stopped and started again.
@@ -192,7 +197,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         // Only apply the defaults on the first run of the app.
         if (!appPreferences.getBoolean(PreferenceManager.KEY_HAS_SET_DEFAULT_VALUES, false))
         {
-            PreferenceManager.getDefaultSharedPreferences(this).getAll().forEach((key, value) -> {
+            PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getAll().forEach((key, value) -> {
 
                 if (value instanceof Boolean)
                 {
@@ -438,7 +443,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
         try (final InputStream assetRcloneConfigFileInputStream = context.getAssets().open(SyncMonkeyConstants.RCLONE_CONFIG_FILE);
              final OutputStream privateAppRcloneConfigFileOutputStream = new FileOutputStream(rcloneConfigFile))
         {
-            copyInputStreamToOutputStream(assetRcloneConfigFileInputStream, privateAppRcloneConfigFileOutputStream);
+            SyncMonkeyUtils.copyInputStreamToOutputStream(assetRcloneConfigFileInputStream, privateAppRcloneConfigFileOutputStream);
         } catch (FileNotFoundException e)
         {
             final String message = "The " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file was not found in the app's assets directory";
@@ -449,22 +454,6 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
             final String message = "Could not create the " + SyncMonkeyConstants.RCLONE_CONFIG_FILE + " file";
             Log.e(LOG_TAG, message, e);
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * Copies the provide input stream to the provided output stream.
-     *
-     * @throws IOException If the first byte cannot be read for any reason other than the end of the file, if the input stream has been closed, or if some
-     *                     other I/O error occurs.
-     */
-    private static void copyInputStreamToOutputStream(InputStream in, OutputStream out) throws IOException
-    {
-        final byte[] buffer = new byte[1024];
-        int read;
-        while ((read = in.read(buffer)) != -1)
-        {
-            out.write(buffer, 0, read);
         }
     }
 
