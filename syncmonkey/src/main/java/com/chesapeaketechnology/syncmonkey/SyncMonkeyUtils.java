@@ -13,7 +13,7 @@ import java.io.OutputStream;
 public final class SyncMonkeyUtils
 {
     /**
-     * Copies the provide input stream to the provided output stream.
+     * Copies the provided input stream to the provided output stream.
      *
      * @throws IOException If the first byte cannot be read for any reason other than the end of the file, if the input stream has been closed, or if some
      *                     other I/O error occurs.
@@ -31,25 +31,25 @@ public final class SyncMonkeyUtils
     /**
      * Get the name of a file without the file extension or period.
      *
-     * @param s File name to work on
+     * @param fileName File name to work on
      * @return file name without extension
      */
-    public static String getNameWithoutExtension(String s)
+    public static String getNameWithoutExtension(String fileName)
     {
-        int i = s.lastIndexOf('.');
+        int i = fileName.lastIndexOf('.');
 
-        if (i > 0 && i < s.length() - 1)
+        if (i > 0 && i < fileName.length() - 1)
         {
-            return s.substring(0, i);
+            return fileName.substring(0, i);
         }
-        return s;
+        return fileName;
     }
 
     /**
-     * Extract the extension (without the period) from the given file name.
+     * Extract the extension (with the period) from the given file name.
      *
      * @param fileName File name to process
-     * @return file extension, or null if no period or nothing after the period
+     * @return file extension with the period, or null if no period or nothing after the period
      */
     public static String getExtension(String fileName)
     {
@@ -58,7 +58,7 @@ public final class SyncMonkeyUtils
 
         if (i > 0 && i < fileName.length() - 1)
         {
-            ext = fileName.substring(i + 1).toLowerCase();
+            ext = fileName.substring(i).toLowerCase();
         }
         return ext;
     }

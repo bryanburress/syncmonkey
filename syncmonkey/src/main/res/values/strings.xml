@@ -70,6 +70,7 @@
     <string name="sharing_error_unknown_error">Error: Could not share the file</string>
     <string name="sharing_success_file">Successfully added the file to the Sync Monkey sharing folder</string>
     <string name="sharing_success_multiple_files">Successfully added the files to the Sync Monkey sharing folder</string>
+    <string name="sharing_failure_multiple_files">Failed to add %1$s file(s) to the Sync Monkey sharing folder</string>
     <string name="sharing_success_text">Successfully shared the text to the Sync Monkey sharing folder</string>
     <string name="sharing_unsupported_type">Unable to share the content using Sync Monkey</string>
 

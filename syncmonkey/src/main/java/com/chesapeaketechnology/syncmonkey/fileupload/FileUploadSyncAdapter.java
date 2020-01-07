@@ -281,9 +281,8 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
         if (currentProcess != null)
         {
-            try
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream())))
             {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream()));
                 String line;
                 //String notificationContent = "";
                 //String[] notificationBigText = new String[5];
@@ -317,7 +316,7 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                 }
             } catch (IOException e)
             {
-                Log.e(LOG_TAG, "Caught an exception when trying to read an error from the upload process", e);
+                Log.e(LOG_TAG, "Caught an exception when trying to read the output from the upload process", e);
             }
 
             try
