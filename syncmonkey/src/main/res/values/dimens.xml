@@ -1,0 +1,5 @@
+<resources>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="share_layout_margin">16dp</dimen>
+    <dimen name="label_value_margin">6dp</dimen>
+</resources>

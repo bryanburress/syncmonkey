@@ -23,6 +23,7 @@ import com.chesapeaketechnology.syncmonkey.fileupload.Items.RemoteItem;
 import net.grandcentrix.tray.AppPreferences;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -94,10 +95,10 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
 
             if (transmitOnlyOnVpn)
             {
-                if (isVpnEnabled()) uploadFile();
+                if (isVpnEnabled()) uploadFiles();
             } else
             {
-                uploadFile();
+                uploadFiles();
             }
         } catch (Exception e)
         {
@@ -235,43 +236,61 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
     /**
      * Pull the upload preferences from the PreferenceManager, and then upload any files that are not already present on the remote server.
      */
-    private void uploadFile()
+    private void uploadFiles()
     {
         synchronized (SyncMonkeyMainActivity.class)
         {
             final String containerName = appPreferences.getString(SyncMonkeyConstants.PROPERTY_CONTAINER_NAME_KEY, null);
-            final String localSyncDirectories = appPreferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, null);
+            final String localSyncDirectories = appPreferences.getString(SyncMonkeyConstants.PROPERTY_LOCAL_SYNC_DIRECTORIES_KEY, "");
             final String deviceId = appPreferences.getString(SyncMonkeyConstants.PROPERTY_DEVICE_ID_KEY, SyncMonkeyConstants.DEFAULT_DEVICE_ID);
 
-            if (containerName == null || localSyncDirectories == null)
+            if (containerName == null)
             {
-                Log.e(LOG_TAG, "Could not upload any files because the containerName or localSyncDirectories was null");
+                Log.e(LOG_TAG, "Could not upload any files because the containerName was null");
                 return;
             }
 
             final RemoteItem remote = new RemoteItem(SyncMonkeyConstants.AZURE_CONFIG_NAME + SyncMonkeyConstants.COLON_SEPARATOR + containerName, SyncMonkeyConstants.AZURE_REMOTE_TYPE);
 
+            // First, sync any files in the private shared directory
+            final String privateAppFilesSyncDirectory = new File(getContext().getFilesDir(), SyncMonkeyConstants.PRIVATE_SHARED_SYNC_DIRECTORY).getPath();
+            processDirectoryForUpload(privateAppFilesSyncDirectory, deviceId, remote);
+
+            //noinspection ConstantConditions
             for (String relativeSyncDirectory : localSyncDirectories.split(SyncMonkeyConstants.COLON_SEPARATOR))
             {
-                final String localSyncDirectory = dataDirectoryPath + relativeSyncDirectory;
+                if (relativeSyncDirectory.isEmpty()) continue;
 
-                if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + localSyncDirectory);
+                processDirectoryForUpload(dataDirectoryPath + relativeSyncDirectory, deviceId, remote);
+            }
+        }
+    }
 
-                Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, localSyncDirectory);
+    /**
+     * Given a directory path, sync all the files in the directory with the provided remote server.
+     *
+     * @param syncDirectoryPath The directory to sync.
+     * @param deviceId          The device ID which will be used as the folder name on the remote server.
+     * @param remote            The remote server to sync the files with.
+     */
+    private void processDirectoryForUpload(String syncDirectoryPath, String deviceId, RemoteItem remote)
+    {
+        if (Log.isLoggable(LOG_TAG, Log.INFO)) Log.i(LOG_TAG, "Syncing the directory: " + syncDirectoryPath);
 
-                if (currentProcess != null)
+        Process currentProcess = rclone.uploadFile(remote, "/" + deviceId, syncDirectoryPath);
+
+        if (currentProcess != null)
+        {
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream())))
+            {
+                String line;
+                //String notificationContent = "";
+                //String[] notificationBigText = new String[5];
+                while ((line = reader.readLine()) != null)
                 {
-                    try
-                    {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getErrorStream()));
-                        String line;
-                        //String notificationContent = "";
-                        //String[] notificationBigText = new String[5];
-                        while ((line = reader.readLine()) != null)
-                        {
-                            Log.d(LOG_TAG, line);
+                    Log.d(LOG_TAG, line);
 
-                            // This code might be useful to show toasts with specific transfer information
+                    // This code might be useful to show toasts with specific transfer information
                         /*if (line.startsWith("Transferred:") && !line.matches("Transferred:\\s+\\d+\\s+/\\s+\\d+,\\s+\\d+%$"))
                         {
                             String s = line.substring(12).trim();
@@ -294,24 +313,22 @@ public class FileUploadSyncAdapter extends AbstractThreadedSyncAdapter
                         {
                             log2File.log(line);
                         }*/
-                        }
-                    } catch (IOException e)
-                    {
-                        Log.e(LOG_TAG, "Caught an exception when trying to read an error from the upload process", e);
-                    }
-
-                    try
-                    {
-                        currentProcess.waitFor();
-                    } catch (InterruptedException e)
-                    {
-                        Log.e(LOG_TAG, "Caught an exception when waiting for the rclone upload process to finish", e);
-                    }
                 }
+            } catch (IOException e)
+            {
+                Log.e(LOG_TAG, "Caught an exception when trying to read the output from the upload process", e);
+            }
 
-                boolean result = currentProcess != null && currentProcess.exitValue() == 0;
-                Log.i(LOG_TAG, "rclone upload result=" + result);
+            try
+            {
+                currentProcess.waitFor();
+            } catch (InterruptedException e)
+            {
+                Log.e(LOG_TAG, "Caught an exception when waiting for the rclone upload process to finish", e);
             }
         }
+
+        boolean result = currentProcess != null && currentProcess.exitValue() == 0;
+        Log.i(LOG_TAG, "rclone upload result=" + result);
     }
 }

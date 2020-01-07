@@ -13,6 +13,8 @@ public class SyncMonkeyConstants
     }
 
     public static final String RCLONE_CONFIG_FILE = "rclone.conf";
+    public static final String PRIVATE_SHARED_SYNC_DIRECTORY = "sharedfiles";
+    public static final String DEFAULT_SHARED_TEXT_FILE_NAME = "Text_To_Share.txt";
     public static final String SYNC_MONKEY_PROPERTIES_FILE = "syncmonkey.properties";
 
     // The authority for the sync adapter's content provider
