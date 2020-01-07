@@ -46,9 +46,11 @@ public class SharingActivity extends AppCompatActivity
 
         final Button shareButton = findViewById(R.id.shareButton);
         shareButton.setOnClickListener(view -> {
-            copySharedFilesToSyncMonkeyDirectory();
-            FileUploadSyncAdapter.runSyncAdapterNow(getApplicationContext());
-            finish();
+            if (copySharedFilesToSyncMonkeyDirectory())
+            {
+                FileUploadSyncAdapter.runSyncAdapterNow(getApplicationContext());
+                finish();
+            }
         });
 
         final Button cancelButton = findViewById(R.id.cancelButton);
@@ -74,7 +76,7 @@ public class SharingActivity extends AppCompatActivity
                         updateUiForSharedText(intent); // Handle text being sent
                     } else if (intent.getParcelableExtra(Intent.EXTRA_STREAM) != null)
                     {
-                        updateItForSharedFile(intent); // Handle single image being sent
+                        updateUiForSharedFile(intent); // Handle single image being sent
                     } else
                     {
                         showSharingErrorToast();
@@ -117,7 +119,7 @@ public class SharingActivity extends AppCompatActivity
             setFileNameEditText(createUniqueFileName(SyncMonkeyConstants.DEFAULT_SHARED_TEXT_FILE_NAME));
         } else
         {
-            Log.d(LOG_TAG, "The text shared to the Sync Monkey app was null");
+            Log.i(LOG_TAG, "The text shared to the Sync Monkey app was null");
         }
     }
 
@@ -127,7 +129,7 @@ public class SharingActivity extends AppCompatActivity
      *
      * @param intent The intent with a single file.
      */
-    private void updateItForSharedFile(Intent intent)
+    private void updateUiForSharedFile(Intent intent)
     {
         sharedFileUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         if (sharedFileUri != null)
@@ -135,7 +137,7 @@ public class SharingActivity extends AppCompatActivity
             setFileNameEditText(createUniqueFileName(getFileName(sharedFileUri)));
         } else
         {
-            Log.d(LOG_TAG, "The file URI shared to the Sync Monkey app was null");
+            Log.i(LOG_TAG, "The file URI shared to the Sync Monkey app was null");
         }
     }
 
@@ -157,7 +159,7 @@ public class SharingActivity extends AppCompatActivity
             fileNameLabel.setText(R.string.file_name_multiple_label);
         } else
         {
-            Log.d(LOG_TAG, "The List of filen URIs shared to the Sync Monkey app was null");
+            Log.i(LOG_TAG, "The List of file URIs shared to the Sync Monkey app was null");
         }
     }
 
@@ -231,8 +233,11 @@ public class SharingActivity extends AppCompatActivity
 
     /**
      * Takes the current shared file(s) and copies them to the private shared directory.
+     *
+     * @return True if the activity should be ended, or false if the activity should not be ended as the user can fix
+     * whatever the copy error is (e.g. The file name edit text field is empty).
      */
-    private void copySharedFilesToSyncMonkeyDirectory()
+    private boolean copySharedFilesToSyncMonkeyDirectory()
     {
         try
         {
@@ -245,7 +250,7 @@ public class SharingActivity extends AppCompatActivity
                 if (fileName.isEmpty())
                 {
                     Toast.makeText(getApplicationContext(), R.string.sharing_error_invalid_file_name, Toast.LENGTH_SHORT).show();
-                    return;
+                    return false;
                 }
 
                 copySharedFile(sharedFileUri, fileName);
@@ -286,7 +291,7 @@ public class SharingActivity extends AppCompatActivity
                 if (fileName.isEmpty())
                 {
                     Toast.makeText(getApplicationContext(), R.string.sharing_error_invalid_file_name, Toast.LENGTH_SHORT).show();
-                    return;
+                    return false;
                 }
 
                 try (final OutputStream textOutputStream = createFileOutputStream(fileName))
@@ -301,12 +306,9 @@ public class SharingActivity extends AppCompatActivity
         {
             Log.e(LOG_TAG, "Unable to share the file in the Sync Monkey Sharing Activity due to an exception: ", e);
             Toast.makeText(getApplicationContext(), R.string.sharing_error_unknown_error, Toast.LENGTH_SHORT).show();
-        } finally
-        {
-            sharedFileUri = null;
-            sharedFileUris = null;
-            sharedText = null;
         }
+
+        return true;
     }
 
     /**
@@ -344,14 +346,13 @@ public class SharingActivity extends AppCompatActivity
      *                 will be appended to create a unique file name.
      * @return The file output stream where the shared file can be written to.
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     private FileOutputStream createFileOutputStream(String fileName) throws IOException
     {
-        final File privateAppFilesSyncDirectory = new File(getApplicationContext().getFilesDir(), SyncMonkeyConstants.PRIVATE_SHARED_SYNC_DIRECTORY);
-        if (!privateAppFilesSyncDirectory.exists()) privateAppFilesSyncDirectory.mkdir();
+        final File privateAppFilesSyncDirectory = getPrivateAppFilesSyncDirectory();
 
         File targetFile = new File(privateAppFilesSyncDirectory, createUniqueFileName(fileName));
 
+        //noinspection ResultOfMethodCallIgnored
         targetFile.createNewFile();
 
         return new FileOutputStream(targetFile);
@@ -367,7 +368,7 @@ public class SharingActivity extends AppCompatActivity
      */
     private String createUniqueFileName(String fileName)
     {
-        final File privateAppFilesSyncDirectory = new File(getApplicationContext().getFilesDir(), SyncMonkeyConstants.PRIVATE_SHARED_SYNC_DIRECTORY);
+        final File privateAppFilesSyncDirectory = getPrivateAppFilesSyncDirectory();
         File potentialNewFile = new File(privateAppFilesSyncDirectory, fileName);
 
         if (potentialNewFile.exists())
@@ -386,5 +387,17 @@ public class SharingActivity extends AppCompatActivity
         }
 
         return fileName;
+    }
+
+    /**
+     * @return The File object representing the app's private storage directory that is synced with the remote server.
+     * Any files in this directory will be uploaded to the remote server.
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private File getPrivateAppFilesSyncDirectory()
+    {
+        final File privateAppFilesSyncDirectory = new File(getApplicationContext().getFilesDir(), SyncMonkeyConstants.PRIVATE_SHARED_SYNC_DIRECTORY);
+        if (!privateAppFilesSyncDirectory.exists()) privateAppFilesSyncDirectory.mkdir();
+        return privateAppFilesSyncDirectory;
     }
 }

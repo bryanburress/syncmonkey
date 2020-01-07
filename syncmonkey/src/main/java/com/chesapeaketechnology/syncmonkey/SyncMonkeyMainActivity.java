@@ -83,7 +83,10 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 {
                     initializeDeviceId();
 
-                    if (grantResults[index] == PackageManager.PERMISSION_DENIED) Log.w(LOG_TAG, "The READ_PHONE_STATE Permission was denied.");
+                    if (grantResults[index] == PackageManager.PERMISSION_DENIED)
+                    {
+                        Log.w(LOG_TAG, "The READ_PHONE_STATE Permission was denied.");
+                    }
                 } else if (Manifest.permission.READ_EXTERNAL_STORAGE.equals(permissions[index]))
                 {
                     if (grantResults[index] == PackageManager.PERMISSION_GRANTED)
@@ -118,7 +121,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         installRcloneConfigFile(this, appPreferences);
 
-        managedConfigurationListener = registerManagedConfigurationListener(this, appPreferences);
+        managedConfigurationListener = registerManagedConfigurationListener(getApplicationContext(), appPreferences);
 
         initializeSyncAdapterIfNecessary();
     }
@@ -135,7 +138,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
                 getApplicationContext().unregisterReceiver(managedConfigurationListener);
             } catch (Exception e)
             {
-                Log.e(LOG_TAG, "Unable to unregister the Managed Configuration Listener when pausing the app");
+                Log.e(LOG_TAG, "Unable to unregister the Managed Configuration Listener when pausing the app", e);
             }
             managedConfigurationListener = null;
         }
@@ -224,7 +227,7 @@ public class SyncMonkeyMainActivity extends AppCompatActivity
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
         {
-            Log.e(LOG_TAG, "Can't initialize the sync adapter schedule because we don't have access to read external storage");
+            Log.w(LOG_TAG, "Can't initialize the sync adapter schedule because we don't have access to read external storage");
             return;
         }
 
